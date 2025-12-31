@@ -88,8 +88,8 @@ class AIAgentApp(QMainWindow):
         # 设置窗口样式
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #1e1e2e;
-                color: #cdd6f4;
+                background-color: #f5f5f5;
+                color: #333333;
             }
         """)
         
@@ -101,7 +101,7 @@ class AIAgentApp(QMainWindow):
         
         # 聊天区域 (占用3/4宽度)
         chat_widget = QWidget()
-        chat_widget.setStyleSheet("background-color: #1e1e2e; border-radius: 10px;")
+        chat_widget.setStyleSheet("background-color: #f5f5f5; border-radius: 10px;")
         chat_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         chat_layout = QVBoxLayout()
         chat_layout.setSpacing(10)
@@ -112,8 +112,8 @@ class AIAgentApp(QMainWindow):
         self.chat_history.setReadOnly(True)
         self.chat_history.setStyleSheet("""
             QTextEdit {
-                background-color: #1e1e2e;
-                color: #cdd6f4;
+                background-color: #ffffff;
+                color: #333333;
                 border: none;
                 border-style: none;
                 outline: none;
@@ -137,15 +137,15 @@ class AIAgentApp(QMainWindow):
         self.input_edit.returnPressed.connect(self.send_message_shortcut)
         self.input_edit.setStyleSheet("""
             QLineEdit {
-                background-color: #313244;
-                color: #cdd6f4;
-                border: 1px solid #45475a;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #d0d0d0;
                 border-radius: 15px;
                 padding: 10px 15px;
                 font-size: 14px;
             }
             QLineEdit:focus {
-                border: 2px solid #89b4fa;
+                border: 2px solid #4a90e2;
             }
         """)
 
@@ -155,15 +155,20 @@ class AIAgentApp(QMainWindow):
         image_btn.clicked.connect(self.send_image)
         image_btn.setStyleSheet("""
             QPushButton {
-                background-color: #f9e2af;
-                color: #1e1e1e;
-                border-radius: 15px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
                 padding: 8px 12px;
                 font-weight: bold;
-                font-size: 16px;
+                font-size: 14px;
             }
             QPushButton:hover {
-                background-color: #e7d19e;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
             }
         """)
 
@@ -172,15 +177,21 @@ class AIAgentApp(QMainWindow):
         send_btn.clicked.connect(self.send_message)
         send_btn.setStyleSheet("""
             QPushButton {
-                background-color: #89b4fa;
-                color: #1e1e1e;
-                border-radius: 15px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
                 padding: 10px 20px;
                 font-weight: bold;
+                font-size: 14px;
                 min-height: 20px;
             }
             QPushButton:hover {
-                background-color: #74c7ec;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
             }
         """)
 
@@ -189,14 +200,14 @@ class AIAgentApp(QMainWindow):
         self.progress_bar.setVisible(False)
         self.progress_bar.setStyleSheet("""
             QProgressBar {
-                border: 2px solid #45475a;
+                border: 2px solid #d0d0d0;
                 border-radius: 5px;
                 text-align: center;
-                background-color: #313244;
-                color: #cdd6f4;
+                background-color: #f0f0f0;
+                color: #333333;
             }
             QProgressBar::chunk {
-                background-color: #89b4fa;
+                background-color: #4a90e2;
                 border-radius: 3px;
             }
         """)
@@ -217,7 +228,7 @@ class AIAgentApp(QMainWindow):
 
         # 右侧预留区域 (占用1/4宽度，用于Live2D)
         right_widget = QWidget()
-        right_widget.setStyleSheet("background-color: #1e1e2e; border-radius: 10px;")
+        right_widget.setStyleSheet("background-color: #f5f5f5; border-radius: 10px;")
         right_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         right_layout = QVBoxLayout()
         right_layout.setSpacing(5)  # 进一步减少间距，让半身像更接近状态栏
@@ -228,9 +239,9 @@ class AIAgentApp(QMainWindow):
         status_group = QGroupBox("")
         status_group.setStyleSheet("""
             QGroupBox {
-                color: #cdd6f4;
+                color: #333333;
                 font-size: 10px;
-                border: 1px solid #45475a;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 margin-top: 1ex;
                 padding-top: 10px;
@@ -243,12 +254,12 @@ class AIAgentApp(QMainWindow):
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 4px 8px;
-                background-color: #1e1e2e !important;
+                background-color: #f5f5f5 !important;
                 font-size: 12px !important;
                 font-weight: bold !important;
-                color: #ffffff !important;
+                color: #333333 !important;
                 font-family: "Microsoft YaHei", "SimHei", sans-serif !important;
-                border: 1px solid #1e1e2e !important;
+                border: 1px solid #f5f5f5 !important;
                 border-radius: 3px !important;
                 margin-top: 3px !important;
                 margin-bottom: 3px !important;
@@ -262,8 +273,8 @@ class AIAgentApp(QMainWindow):
         status_layout.setLabelAlignment(Qt.AlignRight)
 
         # 创建标签样式
-        label_style = "color: #cdd6f4; font-size: 14px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
-        value_style = "color: #a6e3a1; font-size: 14px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
+        label_style = "color: #333333; font-size: 14px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
+        value_style = "color: #4a90e2; font-size: 14px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
         
         # 当前模型
         model_label = QLabel("当前模型:")
@@ -318,8 +329,8 @@ class AIAgentApp(QMainWindow):
         live2d_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # 固定尺寸，防止拉伸
         live2d_label.setStyleSheet("""
             QLabel {
-                background-color: #1e1e2e;
-                border: 2px solid #89b4fa;
+                background-color: #ffffff;
+                border: 2px solid #4a90e2;
                 border-radius: 15px;
                 padding: 5px;
             }
@@ -348,9 +359,9 @@ class AIAgentApp(QMainWindow):
                 live2d_label.setText("图片加载失败")
                 live2d_label.setStyleSheet("""
                     QLabel {
-                        background-color: #1e1e2e;
-                        color: #cdd6f4;
-                        border: 2px solid #f38ba8;
+                        background-color: #ffffff;
+                        color: #333333;
+                        border: 2px solid #4a90e2;
                         border-radius: 15px;
                         font-size: 18px;
                         padding: 20px;
@@ -361,9 +372,9 @@ class AIAgentApp(QMainWindow):
             live2d_label.setText("图片加载失败")
             live2d_label.setStyleSheet("""
                 QLabel {
-                    background-color: #1e1e2e;
-                    color: #cdd6f4;
-                    border: 2px solid #f38ba8;
+                    background-color: #ffffff;
+                    color: #333333;
+                    border: 2px solid #4a90e2;
                     border-radius: 15px;
                     font-size: 18px;
                     padding: 20px;
@@ -377,15 +388,21 @@ class AIAgentApp(QMainWindow):
         settings_btn = QPushButton("设置")
         settings_btn.setStyleSheet("""
             QPushButton {
-                background-color: #f9e2af;
-                color: #1e1e1e;
-                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
                 padding: 10px 15px;
                 font-weight: bold;
+                font-size: 14px;
                 min-height: 20px;
             }
             QPushButton:hover {
-                background-color: #e7d19e;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
             }
         """)
         settings_btn.clicked.connect(self.open_settings)
@@ -394,15 +411,21 @@ class AIAgentApp(QMainWindow):
         memory_btn = QPushButton("识底深湖")
         memory_btn.setStyleSheet("""
             QPushButton {
-                background-color: #cba6f7;
-                color: #1e1e1e;
-                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
                 padding: 10px 15px;
                 font-weight: bold;
+                font-size: 14px;
                 min-height: 20px;
             }
             QPushButton:hover {
-                background-color: #b4befe;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
             }
         """)
         memory_btn.clicked.connect(self.open_memory_lake)
@@ -411,15 +434,21 @@ class AIAgentApp(QMainWindow):
         mcp_btn = QPushButton("MCP工具")
         mcp_btn.setStyleSheet("""
             QPushButton {
-                background-color: #a6e3a1;
-                color: #1e1e1e;
-                border-radius: 10px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
                 padding: 10px 15px;
                 font-weight: bold;
+                font-size: 14px;
                 min-height: 20px;
             }
             QPushButton:hover {
-                background-color: #94e2d5;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
             }
         """)
         mcp_btn.clicked.connect(self.open_mcp_tools)
