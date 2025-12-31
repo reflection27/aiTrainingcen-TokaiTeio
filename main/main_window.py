@@ -155,7 +155,7 @@ class AIAgentApp(QMainWindow):
         image_btn.clicked.connect(self.send_image)
         image_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
@@ -164,11 +164,11 @@ class AIAgentApp(QMainWindow):
                 font-size: 14px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
 
@@ -177,7 +177,7 @@ class AIAgentApp(QMainWindow):
         send_btn.clicked.connect(self.send_message)
         send_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
@@ -187,11 +187,11 @@ class AIAgentApp(QMainWindow):
                 min-height: 20px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
 
@@ -388,7 +388,7 @@ class AIAgentApp(QMainWindow):
         settings_btn = QPushButton("设置")
         settings_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
@@ -398,11 +398,11 @@ class AIAgentApp(QMainWindow):
                 min-height: 20px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
         settings_btn.clicked.connect(self.open_settings)
@@ -411,7 +411,7 @@ class AIAgentApp(QMainWindow):
         memory_btn = QPushButton("识底深湖")
         memory_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
@@ -421,11 +421,11 @@ class AIAgentApp(QMainWindow):
                 min-height: 20px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
         memory_btn.clicked.connect(self.open_memory_lake)
@@ -434,7 +434,7 @@ class AIAgentApp(QMainWindow):
         mcp_btn = QPushButton("MCP工具")
         mcp_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
@@ -444,11 +444,11 @@ class AIAgentApp(QMainWindow):
                 min-height: 20px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
         mcp_btn.clicked.connect(self.open_mcp_tools)

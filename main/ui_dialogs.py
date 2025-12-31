@@ -678,7 +678,7 @@ class MemoryLakeDialog(QDialog):
         refresh_btn = QPushButton("刷新")
         refresh_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 5px;
@@ -687,11 +687,11 @@ class MemoryLakeDialog(QDialog):
                 font-size: 12px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
         refresh_btn.clicked.connect(self.refresh_data)
@@ -803,7 +803,7 @@ class MemoryLakeDialog(QDialog):
         self.important_btn = QPushButton("标记为重点记忆")
         self.important_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 5px;
@@ -812,11 +812,11 @@ class MemoryLakeDialog(QDialog):
                 font-size: 11px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
         self.important_btn.clicked.connect(self.toggle_important_memory)
@@ -904,7 +904,7 @@ class MemoryLakeDialog(QDialog):
             self.important_btn.setText("取消重点记忆")
             self.important_btn.setStyleSheet("""
                 QPushButton {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                     color: #FFFFFF;
                     border: none;
                     border-radius: 5px;
@@ -913,18 +913,18 @@ class MemoryLakeDialog(QDialog):
                     font-size: 11px;
                 }
                 QPushButton:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
                 }
                 QPushButton:pressed {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
                 }
             """)
         else:
             self.important_btn.setText("标记为重点记忆")
             self.important_btn.setStyleSheet("""
                 QPushButton {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                     color: #FFFFFF;
                     border: none;
                     border-radius: 5px;
@@ -933,11 +933,11 @@ class MemoryLakeDialog(QDialog):
                     font-size: 11px;
                 }
                 QPushButton:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
                 }
                 QPushButton:pressed {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
                 }
             """)
         
@@ -1045,7 +1045,7 @@ class MCPToolsDialog(QDialog):
         refresh_btn = QPushButton("刷新")
         refresh_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 5px;
@@ -1054,11 +1054,11 @@ class MCPToolsDialog(QDialog):
                 font-size: 12px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
         refresh_btn.clicked.connect(self.refresh_tools)
@@ -1067,7 +1067,7 @@ class MCPToolsDialog(QDialog):
         add_tool_btn = QPushButton("新建工具")
         add_tool_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #689F38);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 5px;
@@ -1076,11 +1076,11 @@ class MCPToolsDialog(QDialog):
                 font-size: 12px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #558B2F);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #33691E);
             }
         """)
         add_tool_btn.clicked.connect(self.add_new_tool)
@@ -1153,7 +1153,7 @@ class MCPToolsDialog(QDialog):
         self.test_btn = QPushButton("测试工具")
         self.test_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #689F38);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 5px;
@@ -1162,11 +1162,11 @@ class MCPToolsDialog(QDialog):
                 font-size: 12px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #558B2F);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #33691E);
             }
         """)
         self.test_btn.clicked.connect(self.test_tool)
@@ -1175,7 +1175,7 @@ class MCPToolsDialog(QDialog):
         self.edit_btn = QPushButton("编辑工具")
         self.edit_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #689F38);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 5px;
@@ -1184,11 +1184,11 @@ class MCPToolsDialog(QDialog):
                 font-size: 12px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #558B2F);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #33691E);
             }
         """)
         self.edit_btn.clicked.connect(self.edit_tool)
@@ -1197,7 +1197,7 @@ class MCPToolsDialog(QDialog):
         self.delete_btn = QPushButton("删除工具")
         self.delete_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #689F38);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 5px;
@@ -1206,11 +1206,11 @@ class MCPToolsDialog(QDialog):
                 font-size: 12px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #558B2F);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #689F38, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #7CB342, stop:1 #33691E);
             }
         """)
         self.delete_btn.clicked.connect(self.delete_tool)
