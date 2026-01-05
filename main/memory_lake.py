@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-记忆系统模块 - 识底深湖
+记忆系统模块
 处理对话记忆、主题总结和上下文回忆
 """
 
@@ -13,7 +13,7 @@ from config import load_config
 from memory_summary_agent import MemorySummaryAgent
 
 class MemoryLake:
-    """记忆系统 - 识底深湖"""
+    """记忆系统"""
     
     def __init__(self, memory_file="memory_lake.json", chat_logs_dir="chat_logs"):
         self.memory_file = memory_file

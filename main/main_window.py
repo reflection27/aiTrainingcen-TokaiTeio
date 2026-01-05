@@ -14,7 +14,7 @@ from ai_agent import AIAgent
 from ui_dialogs import SettingsDialog, MemoryLakeDialog, MCPToolsDialog
 
 class AIAgentApp(QMainWindow):
-    """东海帝王AI助手主窗口"""
+    """东海帝王AI担当主窗口"""
     
     # 定义信号
     response_ready = pyqtSignal(str)
@@ -71,7 +71,7 @@ class AIAgentApp(QMainWindow):
 
     def init_ui(self):
         """初始化用户界面"""
-        self.setWindowTitle("东海帝王AI助手")
+        self.setWindowTitle("东海帝王AI担当")
         # 增加一点点高度和宽度，让按钮对齐并保持比例
         # 原来：1300x800，现在：1350x850
         # 聊天区域：1000px，右侧区域：350px，高度增加50px
@@ -284,11 +284,21 @@ class AIAgentApp(QMainWindow):
         self.ai_model.setStyleSheet(value_style)
         status_layout.addRow(model_label, self.ai_model)
 
+
+        # 角色选择
+        role_label = QLabel("角色选择:")
+        role_label.setStyleSheet(label_style)
+        role_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+
+        self.role_value = QLabel("东海帝王")
+        self.role_value.setStyleSheet(value_style)
+        status_layout.addRow(role_label, self.role_value)
+
         # 记忆系统
         memory_label = QLabel("记忆系统:")
         memory_label.setStyleSheet(label_style)
         memory_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.ai_memory = QLabel("识底深湖")
+        self.ai_memory = QLabel("记忆系统")
         self.ai_memory.setStyleSheet(value_style)
         status_layout.addRow(memory_label, self.ai_memory)
 
@@ -300,13 +310,13 @@ class AIAgentApp(QMainWindow):
         self.ai_apps.setStyleSheet(value_style)
         status_layout.addRow(apps_label, self.ai_apps)
 
-        # 登录位置
-        location_label = QLabel("登录位置:")
-        location_label.setStyleSheet(label_style)
-        location_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.ai_location = QLabel(getattr(self.agent, 'location', '未知'))
-        self.ai_location.setStyleSheet(value_style)
-        status_layout.addRow(location_label, self.ai_location)
+        # 登录位置信息已隐藏
+        # location_label = QLabel("登录位置:")
+        # location_label.setStyleSheet(label_style)
+        # location_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        # self.ai_location = QLabel(getattr(self.agent, 'location', '未知'))
+        # self.ai_location.setStyleSheet(value_style)
+        # status_layout.addRow(location_label, self.ai_location)
 
         # 当前时间
         time_label = QLabel("当前时间:")
@@ -407,8 +417,8 @@ class AIAgentApp(QMainWindow):
         """)
         settings_btn.clicked.connect(self.open_settings)
         
-        # 识底深湖按钮
-        memory_btn = QPushButton("识底深湖")
+        # 记忆系统按钮
+        memory_btn = QPushButton("记忆系统")
         memory_btn.setStyleSheet("""
             QPushButton {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
@@ -482,9 +492,9 @@ class AIAgentApp(QMainWindow):
         self.statusBar().showMessage("就绪")
         
         # 显示启动欢迎信息
-        location = getattr(self.agent, 'location', '未知')
+        # location = getattr(self.agent, 'location', '未知')
         app_count = getattr(self.agent, 'app_count', 0)
-        self.add_message("系统", f"登录地址：{location}，预载应用：{app_count}个")
+        self.add_message("系统", f"预载应用：{app_count}个")
 
     def add_message(self, sender, message):
         """添加消息到聊天历史"""
@@ -511,7 +521,7 @@ class AIAgentApp(QMainWindow):
         )
 
         if file_path:
-            self.add_message("指挥官", f"📷 上传图片: {file_path}")
+            self.add_message("训练员", f"📷 上传图片: {file_path}")
 
             # 显示进度条
             self.progress_bar.setVisible(True)
@@ -561,7 +571,7 @@ class AIAgentApp(QMainWindow):
         if not user_input:
             return
 
-        self.add_message("指挥官", user_input)
+        self.add_message("训练员", user_input)
         self.input_edit.clear()
 
         # 显示进度条
@@ -697,7 +707,7 @@ class AIAgentApp(QMainWindow):
             self.apply_transparency()
 
     def open_memory_lake(self):
-        """打开识底深湖窗口"""
+        """打开记忆系统窗口"""
         memory_dialog = MemoryLakeDialog(self.agent.memory_lake, self)
         memory_dialog.exec_()
 
@@ -747,7 +757,7 @@ class AIAgentApp(QMainWindow):
     def closeEvent(self, event):
         """程序退出时的处理"""
         try:
-            # 保存未保存的会话记录到识底深湖
+            # 保存未保存的会话记录到记忆系统
             self.save_unsaved_conversations()
             
             # 显示退出消息
@@ -762,7 +772,7 @@ class AIAgentApp(QMainWindow):
             event.accept()
 
     def save_unsaved_conversations(self):
-        """保存未保存的会话记录到识底深湖"""
+        """保存未保存的会话记录到记忆系统"""
         try:
             # 检查开发者模式，如果开启则不保存
             if getattr(self.agent, 'developer_mode', False):
@@ -776,7 +786,7 @@ class AIAgentApp(QMainWindow):
                 print("📝 没有需要保存的会话记录")
                 return
             
-            print(f"📝 开始保存 {len(session_conversations)} 条会话记录到识底深湖")
+            print(f"📝 开始保存 {len(session_conversations)} 条会话记录到记忆系统")
             
             # 🚀 修复：过滤出未保存的对话记录
             unsaved_conversations = []
@@ -849,13 +859,13 @@ class AIAgentApp(QMainWindow):
         
         introduction = f"""（轻轻整理了一下衣服）训练员，您好！我是东海帝王，特雷森学园的赛马娘。
 
-很高兴见到您！作为您的AI助手，我具备以下能力：
+很高兴见到您！作为您的AI担当，我具备以下能力：
 • 智能对话和问题解答
 • 天气查询和实时信息
 • 音乐推荐和文件管理
 • 编程代码生成和帮助
 • 多语言交流和翻译
-• 记忆系统"识底深湖"
+• 记忆系统
 
 现在时间是 {time_str}，我已经准备好为您服务了。请告诉我您需要什么帮助吧！
 

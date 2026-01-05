@@ -1491,18 +1491,18 @@ Purpose: Commander's English music collection"""
         return ""
 
     def _get_comprehensive_context(self, user_input):
-        """获取综合上下文信息：本次运行时聊天记录 + 识底深湖历史记忆"""
+        """获取综合上下文信息：本次运行时聊天记录 + 记忆系统历史记忆"""
         context_parts = []
         
         # 检查是否是询问第一条记忆
-        if "第一条" in user_input and ("识底深湖" in user_input or "记忆" in user_input):
+        if "第一条" in user_input and ("记忆系统" in user_input or "记忆" in user_input):
             try:
                 print(f"🔍 检测到第一条记忆查询: {user_input}")
                 first_memory = self.memory_lake.get_first_memory()
                 if first_memory:
                     print(f"✅ 成功获取第一条记忆: {first_memory.get('date', '未知')} {first_memory.get('timestamp', '未知')}")
                     context_parts.append("【第一条记忆查询】")
-                    context_parts.append(f"识底深湖的第一条记录是：")
+                    context_parts.append(f"记忆系统的第一条记录是：")
                     context_parts.append(f"【{first_memory.get('date', '未知日期')} {first_memory.get('timestamp', '未知时间')}】主题：{first_memory.get('topic', '未知主题')}")
                     if first_memory.get('summary'):
                         context_parts.append(f"摘要：{first_memory.get('summary')}")
@@ -1512,7 +1512,7 @@ Purpose: Commander's English music collection"""
                 else:
                     print("❌ 未找到第一条记忆")
                     context_parts.append("【第一条记忆查询】")
-                    context_parts.append("识底深湖中暂无记忆记录")
+                    context_parts.append("记忆系统中暂无记忆记录")
                     return "\n".join(context_parts)
             except Exception as e:
                 print(f"❌ 获取第一条记忆失败: {str(e)}")
@@ -1527,7 +1527,7 @@ Purpose: Commander's English music collection"""
             for conv in reversed(self.session_conversations[-3:]):  # 检查最近3条对话
                 recent_context += conv["full_text"].lower()
             
-            if "第一条" in recent_context and ("识底深湖" in recent_context or "记忆" in recent_context):
+            if "第一条" in recent_context and ("记忆系统" in recent_context or "记忆" in recent_context):
                 try:
                     first_memory = self.memory_lake.get_first_memory()
                     if first_memory:
@@ -1545,15 +1545,15 @@ Purpose: Commander's English music collection"""
                     context_parts.append("获取第一条记忆详细信息时出现错误")
                     return "\n".join(context_parts)
         
-        # 1. 本次运行时未保存在识底深湖的完整聊天信息
+        # 1. 本次运行时未保存在记忆系统的完整聊天信息
         if self.session_conversations:
             context_parts.append("【本次会话记录】")
             for conv in self.session_conversations:
                 context_parts.append(f"【{conv['timestamp']}】{conv['full_text']}")
         
-        # 2. 此前识底深湖的100条信息（主题、日期、时间）
+        # 2. 此前记忆系统的100条信息（主题、日期、时间）
         try:
-            # 获取识底深湖的历史记忆
+            # 获取记忆系统的历史记忆
             historical_memories = self.memory_lake.get_recent_memories(100)
             if historical_memories:
                 context_parts.append("【历史记忆】")
@@ -1659,7 +1659,7 @@ Purpose: Commander's English music collection"""
             else:
                 client = openai.OpenAI(api_key=api_key)
 
-            # 获取综合上下文信息：本次运行时聊天记录 + 识底深湖历史记忆
+            # 获取综合上下文信息：本次运行时聊天记录 + 记忆系统历史记忆
             comprehensive_context = self._get_comprehensive_context(user_input)
 
             # 构建包含上下文信息的用户消息
@@ -1684,9 +1684,9 @@ Purpose: Commander's English music collection"""
 当用户询问需要结合天气、时间、位置等信息的问题时，请基于提供的上下文信息给出具体、实用的建议。
 
 上下文理解说明：
-1. 【综合上下文】包含了本次运行时未保存在识底深湖的完整聊天信息 + 此前识底深湖的100条历史记忆。
+1. 【综合上下文】包含了本次运行时未保存在记忆系统的完整聊天信息 + 此前记忆系统的100条历史记忆。
 2. 【本次会话记录】显示当前程序运行时的所有对话，请优先基于这些信息进行连贯的对话。
-3. 【历史记忆】显示识底深湖中保存的历史对话主题和摘要，用于补充当前会话的上下文。
+3. 【历史记忆】显示记忆系统中保存的历史对话主题和摘要，用于补充当前会话的上下文。
 4. 当用户说"随便展示一个"、"帮我展示"等请求时，请基于上下文中的具体内容提供相应的示例或信息。
    - 例如：如果上下文显示用户询问了"C语言是什么"，当用户说"帮我随便展示一个"时，应该提供C语言的代码示例。
    - 不要跳到完全不相关的话题。
@@ -1787,7 +1787,7 @@ Purpose: Commander's English music collection"""
             return self._simulated_response(user_input)
 
     def _update_memory_lake(self, user_input, ai_response):
-        """更新识底深湖记忆系统"""
+        """更新记忆系统"""
         # 开发者模式下不保存到记忆系统
         if self.developer_mode:
             return
@@ -1857,7 +1857,7 @@ Purpose: Commander's English music collection"""
                 conv_text = conv["full_text"].lower()
                 
                 # 检查是否是询问第一条记忆的上下文
-                if "第一条" in conv_text and ("识底深湖" in conv_text or "记忆" in conv_text):
+                if "第一条" in conv_text and ("记忆系统" in conv_text or "记忆" in conv_text):
                     # 删除固定模板，让AI使用动态查询
                     pass
             
@@ -2527,10 +2527,8 @@ Purpose: Commander's English music collection"""
                     # 智能提取城市名称
                     user_location = self._extract_city_from_input(user_input)
                     if not user_location:
-                        # 使用登录位置作为默认城市
-                        user_location = self._extract_city_from_location(self.location)
-                        if not user_location:
-                            user_location = "北京"  # 最后的默认城市
+                        # 使用默认城市
+                        user_location = "北京"  # 默认城市
                     
                     # 根据配置选择天气API
                     weather_source = self.config.get("weather_source", "高德地图API")
@@ -2601,10 +2599,81 @@ Purpose: Commander's English music collection"""
         
         return None
 
+    # def _extract_city_from_location(self, location):
+    #     """从登录位置中提取城市名称（已禁用）"""
+    #     if not location or location == "未知位置":
+    #         return None
+    # 
+    #     # 城市名称映射（英文 -> 中文）
+    #     city_mapping = {
+    #         "beijing": "北京",
+    #         "shanghai": "上海",
+    #         "guangzhou": "广州",
+    #         "shenzhen": "深圳",
+    #         "hangzhou": "杭州",
+    #         "nanjing": "南京",
+    #         "wuhan": "武汉",
+    #         "chengdu": "成都",
+    #         "chongqing": "重庆",
+    #         "xian": "西安",
+    #         "tianjin": "天津",
+    #         "suzhou": "苏州",
+    #         "changsha": "长沙",
+    #         "qingdao": "青岛",
+    #         "wuxi": "无锡",
+    #         "ningbo": "宁波",
+    #         "foshan": "佛山",
+    #         "dongguan": "东莞",
+    #         "zhengzhou": "郑州",
+    #         "jinan": "济南",
+    #         "dalian": "大连",
+    #         "fuzhou": "福州",
+    #         "xiamen": "厦门",
+    #         "haerbin": "哈尔滨",
+    #         "changchun": "长春",
+    #         "shenyang": "沈阳",
+    #         "shijiazhuang": "石家庄",
+    #         "taiyuan": "太原",
+    #         "hefei": "合肥",
+    #         "nanchang": "南昌",
+    #         "kunming": "昆明",
+    #         "guiyang": "贵阳",
+    #         "nanning": "南宁",
+    #         "haikou": "海口",
+    #         "lanzhou": "兰州",
+    #         "xining": "西宁",
+    #         "yinchuan": "银川",
+    #         "urumqi": "乌鲁木齐",
+    #         "lasa": "拉萨",
+    #         "huhehaote": "呼和浩特"
+    #     }
+    # 
+    #     # 常见中文城市列表
+    #     chinese_cities = [
+    #         "北京", "上海", "广州", "深圳", "杭州", "南京", "武汉", "成都", "重庆", "西安",
+    #         "天津", "苏州", "长沙", "青岛", "无锡", "宁波", "佛山", "东莞", "郑州", "济南",
+    #         "大连", "福州", "厦门", "哈尔滨", "长春", "沈阳", "石家庄", "太原", "合肥", "南昌",
+    #         "昆明", "贵阳", "南宁", "海口", "兰州", "西宁", "银川", "乌鲁木齐", "拉萨", "呼和浩特"
+    #     ]
+    # 
+    #     location_lower = location.lower()
+    # 
+    #     # 首先检查中文城市名称
+    #     for city in chinese_cities:
+    #         if city in location:
+    #             return city
+    # 
+    #     # 然后检查英文城市名称
+    #     for english_name, chinese_name in city_mapping.items():
+    #         if english_name in location_lower:
+    #             return chinese_name
+    # 
+    #     return None
+
+    # 创建一个简单的替代函数，直接返回None
     def _extract_city_from_location(self, location):
-        """从登录位置中提取城市名称"""
-        if not location or location == "未知位置":
-            return None
+        """从登录位置中提取城市名称（已禁用）"""
+        return None
         
         # 城市名称映射（英文 -> 中文）
         city_mapping = {
@@ -3015,7 +3084,7 @@ Purpose: Commander's English music collection"""
                     self.memory_lake.add_conversation(conv["user_input"], conv["ai_response"])
                     unsaved_conversations.append(conv["full_text"])
             
-            # 强制保存到识底深湖
+            # 强制保存到记忆系统
             if self.memory_lake.current_conversation:
                 topic = self.memory_lake.summarize_and_save_topic(force_save=True)
                 
@@ -3027,7 +3096,7 @@ Purpose: Commander's English music collection"""
                         self.memory_lake.mark_as_important(latest_index)
                     
                     # 构建响应消息
-                    response = f"（轻轻点头）好的指挥官，我已经将这个重要时刻记录到识底深湖中，并标记为重点记忆。"
+                    response = f"（轻轻点头）好的指挥官，我已经将这个重要时刻记录到记忆系统中，并标记为重点记忆。"
                     
                     # 根据设置决定是否显示详细信息
                     show_details = self.config.get("show_remember_details", True)
@@ -3045,7 +3114,7 @@ Purpose: Commander's English music collection"""
                     
                     return response
                 else:
-                    return "（微微皱眉）抱歉指挥官，保存到识底深湖时遇到了一些问题。请稍后再试。"
+                    return "（微微皱眉）抱歉指挥官，保存到记忆系统时遇到了一些问题。请稍后再试。"
             else:
                 return "（轻轻摇头）指挥官，目前没有需要保存的对话内容。请先进行一些对话，然后再说'记住这个时刻'。"
                 

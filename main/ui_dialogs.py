@@ -138,11 +138,11 @@ class SettingsDialog(QDialog):
         self.chat_model_combo.setCurrentText(self.config.get("selected_model", "deepseek-chat"))
         model_layout.addRow("AI模型:", self.chat_model_combo)
 
-        # 识底深湖模型选择
+        # 记忆系统模型选择
         self.memory_model_combo = QComboBox()
         self.memory_model_combo.addItems(["deepseek-chat", "deepseek-coder", "deepseek-reasoner", "gpt-4-turbo", "gpt-3.5-turbo"])
         self.memory_model_combo.setCurrentText(self.config.get("memory_summary_model", "deepseek-reasoner"))
-        model_layout.addRow("识底深湖模型:", self.memory_model_combo)
+        model_layout.addRow("记忆系统模型:", self.memory_model_combo)
 
         # AI Token数设置
         self.max_tokens_edit = QLineEdit()
@@ -511,7 +511,7 @@ class SettingsDialog(QDialog):
         # 保存模型选择
         self.config["selected_model"] = self.chat_model_combo.currentText()
         
-        # 保存识底深湖模型选择
+        # 保存记忆系统模型选择
         self.config["memory_summary_model"] = self.memory_model_combo.currentText()
 
         # 保存AI Token数设置
@@ -633,12 +633,12 @@ class SettingsDialog(QDialog):
 
 
 class MemoryLakeDialog(QDialog):
-    """识底深湖记忆系统对话框"""
+    """记忆系统对话框"""
     
     def __init__(self, memory_lake, parent=None):
         super().__init__(parent)
         self.memory_lake = memory_lake
-        self.setWindowTitle("识底深湖 - 记忆系统")
+        self.setWindowTitle("记忆系统")
         self.setGeometry(200, 200, 800, 700)  # 增加窗口高度
         
         # 设置图标

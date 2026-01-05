@@ -93,6 +93,7 @@ class SimpleGPTSoVITS:
                             f.write(result)
                         temp_file_path = temp_file.name
                         print(f"✅ GPT-SoVITS TTS生成成功，保存到临时文件: {temp_file_path}")
+                if result:
 
                     # 播放音频
                     pygame.mixer.music.load(temp_file_path)
