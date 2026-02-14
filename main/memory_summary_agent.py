@@ -38,11 +38,11 @@ class MemorySummaryAgent:
                     print(f"🔧 使用OpenAI API")
                     client = openai.OpenAI(api_key=self.api_key)
                 
-                # 🚀 修复：提取指挥官的言论，用于主题分析
+                # 🚀 修复：提取训练员的言论，用于主题分析
                 commander_quotes = self._extract_commander_quotes(conversation_text)
-                print(f"🔧 提取到指挥官言论: {commander_quotes}")
+                print(f"🔧 提取到训练员言论: {commander_quotes}")
                 
-                prompt = f"""请分析以下指挥官的言论，总结出准确的主题，要求：
+                prompt = f"""请分析以下训练员的言论，总结出准确的主题，要求：
 1. 分析整个对话流程，识别所有主要话题类型
 2. 主要话题类型包括：音乐推荐、国家介绍、文章写作、天气查询、编程代码、自我介绍、城市介绍、出行建议、文件保存、技术解释、历史介绍等
 3. 如果是多主题对话，要包含所有主要主题，用顿号分隔
@@ -53,7 +53,7 @@ class MemorySummaryAgent:
 8. 不要遗漏任何主要话题，确保主题的完整性
 9. 要准确识别具体内容，如"出行建议"而不是"天气查询"，"记忆提升"而不是"技术解释"
 
-指挥官言论：
+训练员言论：
 {commander_quotes}
 
 主题总结："""
@@ -133,7 +133,7 @@ class MemorySummaryAgent:
         return "多项讨论"  # 最终fallback
     
     def _extract_commander_quotes(self, conversation_text: str) -> str:
-        """🚀 提取指挥官的言论，用于主题分析"""
+        """🚀 提取训练员的言论，用于主题分析"""
         try:
             lines = conversation_text.strip().split('\n')
             commander_quotes = []
@@ -141,19 +141,19 @@ class MemorySummaryAgent:
             for line in lines:
                 line = line.strip()
                 if line.startswith('训练员:'):
-                    # 提取指挥官的问题/请求
-                    quote = line.replace('指挥官:', '').strip()
+                    # 提取训练员的问题/请求
+                    quote = line.replace('训练员:', '').strip()
                     if quote:
                         commander_quotes.append(quote)
             
             if commander_quotes:
                 return '\n'.join(commander_quotes)
             else:
-                # 如果没有找到指挥官言论，返回原始对话内容
+                # 如果没有找到训练员言论，返回原始对话内容
                 return conversation_text
                 
         except Exception as e:
-            print(f"⚠️ 提取指挥官言论失败: {str(e)}")
+            print(f"⚠️ 提取训练员言论失败: {str(e)}")
             return conversation_text
     
     def _extract_topic_from_reasoning(self, reasoning: str) -> str:

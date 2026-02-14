@@ -12,7 +12,7 @@ from PyQt5.QtCore import Qt
 
 # 导入自定义模块
 from config import load_config
-from ai_agent import AIAgent
+from improved_ai_agent import ImprovedAIAgent
 from main_window import AIAgentApp
 
 def main():

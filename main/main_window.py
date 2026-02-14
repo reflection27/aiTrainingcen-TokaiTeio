@@ -10,8 +10,10 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap
 
-from ai_agent import AIAgent
-from ui_dialogs import SettingsDialog, MemoryLakeDialog, MCPToolsDialog
+from improved_ai_agent import ImprovedAIAgent
+from ui_dialogs import MemoryLakeDialog, MCPToolsDialog
+from settings_dialog import SettingsDialog
+from config import load_config
 
 class AIAgentApp(QMainWindow):
     """东海帝王AI担当主窗口"""
@@ -22,7 +24,7 @@ class AIAgentApp(QMainWindow):
     def __init__(self, config):
         super().__init__()
         self.config = config
-        self.agent = AIAgent(config)
+        self.agent = ImprovedAIAgent(config)
         
         # 初始化UI
         self.init_ui()
@@ -540,8 +542,47 @@ class AIAgentApp(QMainWindow):
             self.timeout_timer.timeout.connect(self.handle_timeout)
             self.timeout_timer.start(180000)  # 180秒超时，给图片分析更多时间
 
-            # 在单独的线程中处理图片分析
-            threading.Thread(target=self.process_image_analysis, args=(file_path,), daemon=True).start()
+            # 在单独的线程中处理图片分析（使用asyncio）
+            threading.Thread(target=self._run_async_image_analysis, args=(file_path,), daemon=True).start()
+
+    def _run_async_image_analysis(self, file_path):
+        """在单独的线程中运行异步图片分析"""
+        import asyncio
+        try:
+            # 创建新的事件循环
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # 运行异步方法
+            loop.run_until_complete(self.process_image_analysis_async(file_path))
+        except Exception as e:
+            print(f"❌ 异步图片分析错误: {str(e)}")
+            error_response = f"抱歉，图片分析时出现了问题：{str(e)}"
+            self.response_ready.emit(error_response)
+        finally:
+            loop.close()
+
+    async def process_image_analysis_async(self, file_path):
+        """处理图片分析（异步版本）"""
+        try:
+            print(f"🖼️ 开始分析图片: {file_path}")
+
+            # 使用异步处理
+            response = await self.agent.process_image_async(file_path)
+
+            print(f"✅ 图片分析完成: {response[:50]}...")
+
+            # 确保响应不为空
+            if not response or response.strip() == "":
+                response = "抱歉，图片分析失败，请重试。"
+
+            # 发送信号到主线程
+            self.response_ready.emit(response)
+
+        except Exception as e:
+            print(f"❌ 图片分析错误: {str(e)}")
+            error_response = f"抱歉，图片分析时出现了问题：{str(e)}"
+            self.response_ready.emit(error_response)
 
     def process_image_analysis(self, file_path):
         """处理图片分析"""
@@ -591,13 +632,54 @@ class AIAgentApp(QMainWindow):
         self.timeout_timer.timeout.connect(self.handle_timeout)
         self.timeout_timer.start(240000)  # 240秒超时，给AI更多时间
 
-        # 在单独的线程中处理响应
-        threading.Thread(target=self.process_ai_response, args=(user_input,), daemon=True).start()
+        # 在单独的线程中处理响应（使用asyncio）
+        threading.Thread(target=self._run_async_response, args=(user_input,), daemon=True).start()
 
     def send_message_shortcut(self):
         """快捷键发送消息"""
         if QApplication.keyboardModifiers() & Qt.ControlModifier:
             self.send_message()
+
+    def _run_async_response(self, user_input):
+        """在单独的线程中运行异步响应处理"""
+        import asyncio
+        try:
+            # 创建新的事件循环
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+            # 运行异步方法
+            loop.run_until_complete(self.process_ai_response_async(user_input))
+        except Exception as e:
+            print(f"❌ 异步响应处理错误: {str(e)}")
+            error_response = f"抱歉，处理您的请求时出现了问题：{str(e)}"
+            self.response_ready.emit(error_response)
+        finally:
+            loop.close()
+
+    async def process_ai_response_async(self, user_input):
+        """处理AI响应（异步版本）"""
+        try:
+            print(f"🔄 开始处理AI响应: {user_input}")
+
+            # 使用异步处理
+            response = await self.agent.process_command_async(user_input)
+
+            print(f"✅ AI响应获取成功: {response[:50]}...")
+
+            # 确保响应不为空
+            if not response or response.strip() == "":
+                response = "抱歉，我没有理解您的意思，请重新表述一下。"
+
+            # 发送信号到主线程
+            print(f"📡 发送信号: {response[:50]}...")
+            self.response_ready.emit(response)
+
+        except Exception as e:
+            # 如果出现异常，也要更新UI
+            print(f"❌ AI响应处理错误: {str(e)}")
+            error_response = f"抱歉，处理您的请求时出现了问题：{str(e)}"
+            self.response_ready.emit(error_response)
 
     def process_ai_response(self, user_input):
         """处理AI响应"""
@@ -674,6 +756,9 @@ class AIAgentApp(QMainWindow):
         # 添加消息到聊天历史
         print(f"📝 添加消息到聊天历史: 东海帝王 - {response[:50]}...")
         self.add_message("东海帝王", response)
+
+        # 播放TTS
+        self._play_tts(response)
         
         # 延迟隐藏进度条
         QTimer.singleShot(800, lambda: self.progress_bar.setVisible(False))
@@ -695,16 +780,19 @@ class AIAgentApp(QMainWindow):
     def open_settings(self):
         """打开设置窗口"""
         settings_dialog = SettingsDialog(self.config, self, self.update_transparency)
-        if settings_dialog.exec_() == QDialog.Accepted:
-            # 设置保存后，更新TTS配置
-            try:
-                self.agent.update_tts_config(self.config)
-                print("✅ TTS配置已更新")
-            except Exception as e:
-                print(f"⚠️ TTS配置更新失败: {str(e)}")
+        settings_dialog.exec_()
+        # 重新加载配置
+        self.config = load_config()
+        
+        # 设置保存后，更新TTS配置
+        try:
+            self.agent.update_tts_config(self.config)
+            print("✅ TTS配置已更新")
+        except Exception as e:
+            print(f"⚠️ TTS配置更新失败: {str(e)}")
             
-            # 设置保存后，重新应用透明度设置
-            self.apply_transparency()
+        # 设置保存后，重新应用透明度设置
+        self.apply_transparency()
 
     def open_memory_lake(self):
         """打开记忆系统窗口"""
@@ -844,7 +932,7 @@ class AIAgentApp(QMainWindow):
                 introduction = self.generate_introduction()
                 
                 # 将自我介绍添加到聊天历史
-                self.add_message("露尼西亚", introduction)
+                self.add_message("东海帝王", introduction)
                 
                 # 将自我介绍添加到AI代理的会话记录中，标记为系统消息
                 self.agent._add_session_conversation("系统", introduction)
@@ -870,5 +958,35 @@ class AIAgentApp(QMainWindow):
 现在时间是 {time_str}，我已经准备好为您服务了。请告诉我您需要什么帮助吧！
 
 （对了，如果您想了解我的更多功能，可以直接问我"你能做什么"哦~）"""
+
+
+
+    def _play_tts(self, text):
+        """播放TTS语音"""
+        try:
+            tts_enabled = self.config.get("tts_enabled", False)
+            has_tts_manager = hasattr(self.agent, 'tts_manager') and self.agent.tts_manager
+            tts_available = has_tts_manager and self.agent.tts_manager.is_available()
+
+            print(f"🔍 TTS播放检查: tts_enabled={tts_enabled}, has_tts_manager={has_tts_manager}, tts_available={tts_available}")
+
+            if tts_enabled and has_tts_manager:
+                if not tts_available:
+                    print("⚠️ TTS不可用，跳过语音播放")
+                else:
+                    # 提取纯文本内容（去除表情符号等）
+                    import re
+                    clean_text = re.sub(r'[（\(].*?[）\)]', '', text)  # 移除括号内容
+                    clean_text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z0-9\s，。！？、；：""''（）]', '', clean_text)  # 保留中文、英文、数字和标点
+                    clean_text = clean_text.strip()
+
+                    if clean_text and len(clean_text) > 0:
+                        print(f"🎤 开始TTS播放: {clean_text[:50]}...")
+                        self.agent.tts_manager.speak_text(clean_text)
+                    else:
+                        print("⚠️ 清理后的文本为空，跳过TTS播放")
+            else:
+                print("ℹ️ TTS未启用或管理器不可用")
+        except Exception as e:
+            print(f"⚠️ TTS播放失败: {str(e)}")
         
-        return introduction

@@ -28,6 +28,84 @@ class SettingsDialog(QDialog):
         self.config = config
         self.transparency_callback = transparency_callback  # 透明度更新回调
         self.setWindowTitle("东海帝王AI设置")
+        # 导入Qt模块
+        from PyQt5.QtCore import Qt
+        from PyQt5.QtGui import QPalette, QColor
+
+        # 设置窗口标志，确保可以拖动和关闭
+        self.setWindowFlags(Qt.Window | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint)
+        # 设置窗口模态，确保它可以正常拖动
+        self.setModal(True)
+
+        # 设置浅色背景调色板
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(245, 245, 245))  # 浅色背景
+        palette.setColor(QPalette.WindowText, QColor(30, 30, 30))  # 深色文本
+        palette.setColor(QPalette.Base, QColor(255, 255, 255))  # 白色基础色
+        palette.setColor(QPalette.AlternateBase, QColor(240, 240, 240))  # 交替基础色
+        palette.setColor(QPalette.ToolTipBase, QColor(240, 240, 240))  # 工具提示基础色
+        palette.setColor(QPalette.ToolTipText, QColor(30, 30, 30))  # 工具提示文本
+        palette.setColor(QPalette.Text, QColor(30, 30, 30))  # 文本颜色
+        palette.setColor(QPalette.Button, QColor(240, 240, 240))  # 按钮颜色
+        palette.setColor(QPalette.ButtonText, QColor(30, 30, 30))  # 按钮文本
+        palette.setColor(QPalette.BrightText, QColor(0, 0, 0))  # 亮色文本
+        palette.setColor(QPalette.Highlight, QColor(76, 163, 255))  # 高亮色
+        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))  # 高亮文本
+        self.setPalette(palette)
+
+        # 设置样式表，确保所有子控件使用浅色主题
+        self.setStyleSheet("""
+            QGroupBox {
+                background-color: #f5f5f5;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+            QLineEdit, QTextEdit, QComboBox {
+                background-color: #ffffff;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+                padding: 3px;
+            }
+            QPushButton {
+                background-color: #e0e0e0;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #d0d0d0;
+            }
+            QPushButton:pressed {
+                background-color: #c0c0c0;
+            }
+            QCheckBox {
+                color: #1e1e1e;
+            }
+            QSlider::groove:horizontal {
+                border: 1px solid #cccccc;
+                height: 8px;
+                background: #ffffff;
+                border-radius: 4px;
+            }
+            QSlider::handle:horizontal {
+                background: #4ca3ff;
+                border: 1px solid #cccccc;
+                width: 18px;
+                margin: -5px 0;
+                border-radius: 9px;
+            }
+        """)
         # 居中显示窗口
         from PyQt5.QtGui import QGuiApplication
         screen = QGuiApplication.primaryScreen().availableGeometry()
@@ -639,6 +717,83 @@ class MemoryLakeDialog(QDialog):
         super().__init__(parent)
         self.memory_lake = memory_lake
         self.setWindowTitle("记忆系统")
+        # 导入Qt模块
+        from PyQt5.QtCore import Qt
+        from PyQt5.QtGui import QPalette, QColor
+        # 设置窗口标志，确保可以拖动和关闭
+        self.setWindowFlags(Qt.Window | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint)
+        # 设置窗口模态，确保它可以正常拖动
+        self.setModal(True)
+
+        # 设置浅色背景调色板
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(245, 245, 245))  # 浅色背景
+        palette.setColor(QPalette.WindowText, QColor(30, 30, 30))  # 深色文本
+        palette.setColor(QPalette.Base, QColor(255, 255, 255))  # 白色基础色
+        palette.setColor(QPalette.AlternateBase, QColor(240, 240, 240))  # 交替基础色
+        palette.setColor(QPalette.ToolTipBase, QColor(240, 240, 240))  # 工具提示基础色
+        palette.setColor(QPalette.ToolTipText, QColor(30, 30, 30))  # 工具提示文本
+        palette.setColor(QPalette.Text, QColor(30, 30, 30))  # 文本颜色
+        palette.setColor(QPalette.Button, QColor(240, 240, 240))  # 按钮颜色
+        palette.setColor(QPalette.ButtonText, QColor(30, 30, 30))  # 按钮文本
+        palette.setColor(QPalette.BrightText, QColor(0, 0, 0))  # 亮色文本
+        palette.setColor(QPalette.Highlight, QColor(76, 163, 255))  # 高亮色
+        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))  # 高亮文本
+        self.setPalette(palette)
+
+        # 设置样式表，确保所有子控件使用浅色主题
+        self.setStyleSheet("""
+            QGroupBox {
+                background-color: #f5f5f5;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+            QLineEdit, QTextEdit, QComboBox {
+                background-color: #ffffff;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+                padding: 3px;
+            }
+            QPushButton {
+                background-color: #e0e0e0;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #d0d0d0;
+            }
+            QPushButton:pressed {
+                background-color: #c0c0c0;
+            }
+            QCheckBox {
+                color: #1e1e1e;
+            }
+            QListWidget {
+                background-color: #ffffff;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+            }
+            QListWidget::item {
+                padding: 5px;
+            }
+            QListWidget::item:selected {
+                background-color: #4ca3ff;
+                color: #ffffff;
+            }
+        """)
         self.setGeometry(200, 200, 800, 700)  # 增加窗口高度
         
         # 设置图标
@@ -703,17 +858,19 @@ class MemoryLakeDialog(QDialog):
         topics_group = QGroupBox("主题索引")
         topics_group.setStyleSheet("""
             QGroupBox {
-                color: #cdd6f4;
+                color: #333333;
                 font-size: 14px;
-                border: 1px solid #45475a;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 margin-top: 2ex;
+                background-color: #f5f5f5;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
-                background-color: #1e1e2e;
+                background-color: #f5f5f5;
+                color: #333333;
             }
         """)
         topics_layout = QVBoxLayout()
@@ -725,11 +882,15 @@ class MemoryLakeDialog(QDialog):
         self.search_edit.setPlaceholderText("搜索主题...")
         self.search_edit.setStyleSheet("""
             QLineEdit {
-                background-color: #313244;
-                color: #cdd6f4;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 padding: 5px 10px;
                 font-size: 12px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4a90e2;
             }
         """)
         self.search_edit.textChanged.connect(self.filter_topics)
@@ -744,19 +905,20 @@ class MemoryLakeDialog(QDialog):
         self.topics_list = QListWidget()
         self.topics_list.setStyleSheet("""
             QListWidget {
-                background-color: #313244;
-                color: #cdd6f4;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 padding: 5px;
                 font-size: 12px;
             }
             QListWidget::item {
                 padding: 5px;
-                border-bottom: 1px solid #45475a;
+                border-bottom: 1px solid #e0e0e0;
             }
             QListWidget::item:selected {
-                background-color: #89b4fa;
-                color: #1e1e1e;
+                background-color: #e6f2ff;
+                color: #333333;
             }
         """)
         self.topics_list.itemClicked.connect(self.show_topic_details)
@@ -768,17 +930,19 @@ class MemoryLakeDialog(QDialog):
         details_group = QGroupBox("主题详情")
         details_group.setStyleSheet("""
             QGroupBox {
-                color: #cdd6f4;
+                color: #333333;
                 font-size: 14px;
-                border: 1px solid #45475a;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 margin-top: 2ex;
+                background-color: #f5f5f5;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
-                background-color: #1e1e2e;
+                background-color: #f5f5f5;
+                color: #333333;
             }
         """)
         details_layout = QVBoxLayout()
@@ -789,13 +953,13 @@ class MemoryLakeDialog(QDialog):
         self.important_label = QLabel("⭐ 重点记忆")
         self.important_label.setStyleSheet("""
             QLabel {
-                color: #f9e2af;
+                color: #ff9800;
                 font-weight: bold;
                 font-size: 12px;
                 padding: 5px 10px;
-                background-color: #313244;
+                background-color: #fff8e1;
                 border-radius: 5px;
-                border: 1px solid #f9e2af;
+                border: 1px solid #ffcc80;
             }
         """)
         self.important_label.setVisible(False)
@@ -832,8 +996,9 @@ class MemoryLakeDialog(QDialog):
         self.details_text.setReadOnly(True)
         self.details_text.setStyleSheet("""
             QTextEdit {
-                background-color: #313244;
-                color: #cdd6f4;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 padding: 10px;
                 font-size: 12px;
@@ -855,13 +1020,23 @@ class MemoryLakeDialog(QDialog):
     
     def refresh_data(self):
         """刷新记忆数据"""
-        stats = self.memory_lake.get_memory_stats()
-        self.stats_label.setText(
-            f"总主题数: {stats['total_topics']} | "
-            f"重点记忆: {stats['important_topics']} | "
-            f"日志文件数: {stats['total_log_files']} | "
-            f"记忆文件大小: {stats['memory_file_size']} bytes"
-        )
+        try:
+            stats = self.memory_lake.get_memory_stats()
+            # 确保所有需要的键都存在，如果不存在则使用默认值
+            total_topics = stats.get('total_topics', 0)
+            important_topics = stats.get('important_topics', 0)
+            total_log_files = stats.get('total_log_files', 0)
+            memory_file_size = stats.get('memory_file_size', 0)
+
+            self.stats_label.setText(
+                f"总主题数: {total_topics} | "
+                f"重点记忆: {important_topics} | "
+                f"日志文件数: {total_log_files} | "
+                f"记忆文件大小: {memory_file_size} bytes"
+            )
+        except Exception as e:
+            print(f"刷新记忆数据失败: {str(e)}")
+            self.stats_label.setText("数据加载失败")
         
         self.load_topics()
     
@@ -992,6 +1167,83 @@ class MCPToolsDialog(QDialog):
         super().__init__(parent)
         self.mcp_tools = mcp_tools
         self.setWindowTitle("MCP工具管理")
+        # 导入Qt模块
+        from PyQt5.QtCore import Qt
+        from PyQt5.QtGui import QPalette, QColor
+        # 设置窗口标志，确保可以拖动和关闭
+        self.setWindowFlags(Qt.Window | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint)
+        # 设置窗口模态，确保它可以正常拖动
+        self.setModal(True)
+
+        # 设置浅色背景调色板
+        palette = QPalette()
+        palette.setColor(QPalette.Window, QColor(245, 245, 245))  # 浅色背景
+        palette.setColor(QPalette.WindowText, QColor(30, 30, 30))  # 深色文本
+        palette.setColor(QPalette.Base, QColor(255, 255, 255))  # 白色基础色
+        palette.setColor(QPalette.AlternateBase, QColor(240, 240, 240))  # 交替基础色
+        palette.setColor(QPalette.ToolTipBase, QColor(240, 240, 240))  # 工具提示基础色
+        palette.setColor(QPalette.ToolTipText, QColor(30, 30, 30))  # 工具提示文本
+        palette.setColor(QPalette.Text, QColor(30, 30, 30))  # 文本颜色
+        palette.setColor(QPalette.Button, QColor(240, 240, 240))  # 按钮颜色
+        palette.setColor(QPalette.ButtonText, QColor(30, 30, 30))  # 按钮文本
+        palette.setColor(QPalette.BrightText, QColor(0, 0, 0))  # 亮色文本
+        palette.setColor(QPalette.Highlight, QColor(76, 163, 255))  # 高亮色
+        palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))  # 高亮文本
+        self.setPalette(palette)
+
+        # 设置样式表，确保所有子控件使用浅色主题
+        self.setStyleSheet("""
+            QGroupBox {
+                background-color: #f5f5f5;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 5px;
+                margin-top: 10px;
+                padding-top: 10px;
+                font-weight: bold;
+            }
+            QGroupBox::title {
+                subcontrol-origin: margin;
+                left: 10px;
+                padding: 0 5px 0 5px;
+            }
+            QLineEdit, QTextEdit, QComboBox {
+                background-color: #ffffff;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+                padding: 3px;
+            }
+            QPushButton {
+                background-color: #e0e0e0;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+                padding: 5px;
+            }
+            QPushButton:hover {
+                background-color: #d0d0d0;
+            }
+            QPushButton:pressed {
+                background-color: #c0c0c0;
+            }
+            QCheckBox {
+                color: #1e1e1e;
+            }
+            QListWidget {
+                background-color: #ffffff;
+                color: #1e1e1e;
+                border: 1px solid #cccccc;
+                border-radius: 3px;
+            }
+            QListWidget::item {
+                padding: 5px;
+            }
+            QListWidget::item:selected {
+                background-color: #4ca3ff;
+                color: #ffffff;
+            }
+        """)
         self.setGeometry(200, 200, 1000, 800)  # 增加窗口高度
         
         # 设置图标
@@ -1031,11 +1283,15 @@ class MCPToolsDialog(QDialog):
         self.search_edit.setPlaceholderText("搜索工具...")
         self.search_edit.setStyleSheet("""
             QLineEdit {
-                background-color: #313244;
-                color: #cdd6f4;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 padding: 5px 10px;
                 font-size: 12px;
+            }
+            QLineEdit:focus {
+                border: 2px solid #4a90e2;
             }
         """)
         self.search_edit.textChanged.connect(self.filter_tools)
@@ -1095,19 +1351,20 @@ class MCPToolsDialog(QDialog):
         self.tools_list = QListWidget()
         self.tools_list.setStyleSheet("""
             QListWidget {
-                background-color: #313244;
-                color: #cdd6f4;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 padding: 5px;
                 font-size: 12px;
             }
             QListWidget::item {
                 padding: 5px;
-                border-bottom: 1px solid #45475a;
+                border-bottom: 1px solid #e0e0e0;
             }
             QListWidget::item:selected {
-                background-color: #89b4fa;
-                color: #1e1e1e;
+                background-color: #e6f2ff;
+                color: #333333;
             }
         """)
         self.tools_list.itemClicked.connect(self.show_tool_details)
@@ -1119,17 +1376,19 @@ class MCPToolsDialog(QDialog):
         details_group = QGroupBox("工具详情")
         details_group.setStyleSheet("""
             QGroupBox {
-                color: #cdd6f4;
+                color: #333333;
                 font-size: 14px;
-                border: 1px solid #45475a;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 margin-top: 2ex;
+                background-color: #f5f5f5;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
-                background-color: #1e1e2e;
+                background-color: #f5f5f5;
+                color: #333333;
             }
         """)
         details_layout = QVBoxLayout()
@@ -1138,8 +1397,9 @@ class MCPToolsDialog(QDialog):
         self.details_text.setReadOnly(True)
         self.details_text.setStyleSheet("""
             QTextEdit {
-                background-color: #313244;
-                color: #cdd6f4;
+                background-color: #ffffff;
+                color: #333333;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 padding: 10px;
                 font-size: 12px;
