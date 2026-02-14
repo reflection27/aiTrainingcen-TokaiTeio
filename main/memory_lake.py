@@ -78,7 +78,7 @@ class MemoryLake:
             "timestamp": timestamp,
             "user_input": user_input,
             "ai_response": ai_response,
-            "full_text": f"指挥官: {user_input}\n东海帝王: {ai_response}"
+            "full_text": f"训练员: {user_input}\n东海帝王: {ai_response}"
         })
         
         print(f"✅ 添加对话到记忆系统: {user_input[:30]}... (当前共{len(self.current_conversation)}条)")
@@ -608,7 +608,7 @@ class MemoryLake:
             return ai_response
         
         # 自我介绍相关（优先于音乐推荐）
-        if "指挥官，您好！我是东海帝王" in ai_response or "特雷森学园的赛马娘" in ai_response:
+        if "训练员，您好！我是东海帝王" in ai_response or "特雷森学园的赛马娘" in ai_response:
             return "进行了自我介绍，介绍了身份和能力"
         
         # 音乐推荐相关

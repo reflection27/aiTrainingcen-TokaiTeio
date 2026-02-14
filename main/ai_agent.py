@@ -170,21 +170,9 @@ class AIAgent:
             return self._handle_remember_moment(user_input)
 
         # 记录对话历史
-        self.conversation_history.append(f"指挥官: {user_input}")
+        self.conversation_history.append(f"训练员: {user_input}")
 
-        # 检查威廉关键词
-        if "威廉" in user_input:
-            self.william_count = getattr(self, 'william_count', 0) + 1
-            if self.william_count > 1:
-                response = "在你面前的明明是我，为什么总是提到威廉呢？"
-                # 🚀 修复：威廉关键词响应直接返回，不调用_update_memory_lake
-                # 避免重复调用，统一在最后处理
-                return response
-            else:
-                response = "威廉是我的弟弟，他很好。"
-                # 🚀 修复：威廉关键词响应直接返回，不调用_update_memory_lake
-                # 避免重复调用，统一在最后处理
-                return response
+
 
         # 分析用户输入，判断是否需要获取位置和天气信息
         context_info = self._get_context_info(user_input)
@@ -1067,7 +1055,7 @@ class AIAgent:
                         print(f"🔍 文件标题: {title}")
                         print(f"🔍 文件名: {filename}")
                         print(f"🔍 保存位置: {location}")
-                        print(f"🔍 路径来源: {'AI返回' if location and location != self.config.get('default_save_path', 'D:/露尼西亚文件/') else '默认路径'}")
+                        print(f"🔍 路径来源: {'AI返回' if location and location != self.config.get('default_save_path', 'D:/东海帝王文件/') else '默认路径'}")
                         print(f"🔍 文件类型: {file_type}")
                         
                         result = self.mcp_server.call_tool("write_file", 
@@ -1135,7 +1123,7 @@ class AIAgent:
                     print(f"🔍 后备方案文件标题: {title}")
                     print(f"🔍 后备方案文件名: {filename}")
                     print(f"🔍 后备方案保存位置: {location}")
-                    print(f"🔍 后备方案路径来源: {'用户指定' if location and location != self.config.get('default_save_path', 'D:/露尼西亚文件/') else '默认路径'}")
+                    print(f"🔍 后备方案路径来源: {'用户指定' if location and location != self.config.get('default_save_path', 'D:/东海帝王文件/') else '默认路径'}")
                     
                     result = self.mcp_server.call_tool("write_file", 
                                                      file_path=file_path, 
@@ -1339,7 +1327,7 @@ class AIAgent:
    - 民谣风格，适合深夜沉思
 
 创建时间：{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-用途：指挥官的中文音乐收藏"""
+用途：训练员的中文音乐收藏"""
                 elif "英文歌单" in title:
                     content = """# English Music Playlist
 
@@ -1387,7 +1375,7 @@ Purpose: Commander's English music collection"""
 - 适合场景：夜间放松、学习德语
 
 创建时间：{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
-用途：指挥官的德语音乐收藏"""
+用途：训练员的德语音乐收藏"""
                 else:
                     content = f"# {title}\n\n这是一个{title}，创建时间：{datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             
@@ -1416,17 +1404,17 @@ Purpose: Commander's English music collection"""
                             result = self.mcp_server.call_tool("write_file", file_path=file_path, content=content)
                             return f"（指尖轻敲控制台）{result}"
                         except Exception as e:
-                            return f"（微微皱眉）抱歉指挥官，创建文件时遇到了问题：{str(e)}"
+                            return f"（微微皱眉）抱歉训练员，创建文件时遇到了问题：{str(e)}"
                 
                 # 获取文件名格式设置
                 filename_format = self.config.get("note_filename_format", "simple")
                 result = self.mcp_server.call_tool("create_note", title=title, content=content, filename_format=filename_format, location=location)
                 return f"（指尖轻敲控制台）{result}"
             else:
-                return f"（微微皱眉）抱歉指挥官，无法确定笔记标题。请明确说明要创建什么类型的笔记。"
+                return f"（微微皱眉）抱歉训练员，无法确定笔记标题。请明确说明要创建什么类型的笔记。"
                 
         except Exception as e:
-            return f"（微微皱眉）抱歉指挥官，创建笔记时遇到了问题：{str(e)}"
+            return f"（微微皱眉）抱歉训练员，创建笔记时遇到了问题：{str(e)}"
 
     def _search_session_context(self, user_input):
         """搜索本次会话的上下文"""
@@ -1861,7 +1849,7 @@ Purpose: Commander's English music collection"""
                     # 删除固定模板，让AI使用动态查询
                     pass
             
-            return "（轻轻推了推眼镜）指挥官，现在是下午时间。有什么需要我协助的吗？"
+            return "（轻轻推了推眼镜）训练员，现在是下午时间。有什么需要我协助的吗？"
         
         # 检查是否是"再推荐几首"
         if "再推荐" in user_input and "几首" in user_input:
@@ -1944,11 +1932,11 @@ Purpose: Commander's English music collection"""
                                 subprocess.Popen("cmd.exe")
                                 return f"（指尖轻敲控制台）已启动命令提示符"
                             else:
-                                return f"（微微皱眉）抱歉指挥官，我没有找到{app_name}的安装路径。请确认该应用已正确安装。"
+                                return f"（微微皱眉）抱歉训练员，我没有找到{app_name}的安装路径。请确认该应用已正确安装。"
                         except Exception as e2:
-                            return f"（微微皱眉）抱歉指挥官，启动{app_name}时遇到了问题：{str(e2)}"
+                            return f"（微微皱眉）抱歉训练员，启动{app_name}时遇到了问题：{str(e2)}"
                 except Exception as e:
-                    return f"（微微皱眉）抱歉指挥官，启动{app_name}时遇到了问题：{str(e)}"
+                    return f"（微微皱眉）抱歉训练员，启动{app_name}时遇到了问题：{str(e)}"
         
         # 优先处理网站打开请求 - 使用专门的AI识别
         website_result = self._ai_identify_website_intent(user_input)
@@ -1958,7 +1946,7 @@ Purpose: Commander's English music collection"""
                 result = self.tools["打开网站"](website_result, self.website_map)
                 return f"（指尖轻敲控制台）{result}"
             except Exception as e:
-                return f"（微微皱眉）抱歉指挥官，打开网站时遇到了问题：{str(e)}"
+                return f"（微微皱眉）抱歉训练员，打开网站时遇到了问题：{str(e)}"
         
         # 如果专门的AI识别失败，使用后备逻辑
         website_fallback_result = self._fallback_website_check(user_input)
@@ -1983,7 +1971,7 @@ Purpose: Commander's English music collection"""
                         result = self.tools["搜索"](query, default_search_engine, default_browser)
                         return f"（指尖轻敲控制台）{result}"
                     except Exception as e:
-                        return f"（微微皱眉）抱歉指挥官，搜索时遇到了问题：{str(e)}"
+                        return f"（微微皱眉）抱歉训练员，搜索时遇到了问题：{str(e)}"
             elif search_type == "question":
                 print(f"🤔 AI识别为询问请求: {user_input}")
                 # 返回None，让AI继续处理这个询问
@@ -2007,9 +1995,9 @@ Purpose: Commander's English music collection"""
             # 从最近的对话中提取代码内容并直接返回
             code_content = self._extract_code_from_recent_conversations()
             if code_content:
-                return f"好的，指挥官。以下是刚才生成的代码内容：\n\n```java\n{code_content}\n```"
+                return f"好的，训练员。以下是刚才生成的代码内容：\n\n```java\n{code_content}\n```"
             else:
-                return "抱歉，指挥官。我没有找到最近的代码内容。请重新生成代码。"
+                return "抱歉，训练员。我没有找到最近的代码内容。请重新生成代码。"
         
         # 处理文件创建请求（AI智能优先）
         # 首先尝试AI智能识别和创建文件
@@ -2168,10 +2156,10 @@ Purpose: Commander's English music collection"""
                         except Exception as e:
                             print(f"AI API调用失败: {str(e)}")
                             # 如果AI调用失败，返回错误信息
-                            return f"（微微皱眉）抱歉指挥官，AI代码生成失败：{str(e)}"
+                            return f"（微微皱眉）抱歉训练员，AI代码生成失败：{str(e)}"
                     else:
                         # 如果没有API密钥，返回提示信息
-                        return "（微微皱眉）抱歉指挥官，需要配置AI API密钥才能生成代码。请先配置DeepSeek或OpenAI API密钥。"
+                        return "（微微皱眉）抱歉训练员，需要配置AI API密钥才能生成代码。请先配置DeepSeek或OpenAI API密钥。"
                     
                     # 根据用户要求决定是否保存文件
                     if is_save_request:
@@ -2201,7 +2189,7 @@ Purpose: Commander's English music collection"""
                         return f"（指尖轻敲控制台）我已经为您生成了Python代码。如果您需要保存为文件，请告诉我保存位置，比如'保存到D盘'或'保存为{display_filename}'。\n\n```python\n{python_code}\n```"
                     
                 except Exception as e:
-                                            return f"（微微皱眉）抱歉指挥官，创建Python文件时遇到了问题：{str(e)}"
+                                            return f"（微微皱眉）抱歉训练员，创建Python文件时遇到了问题：{str(e)}"
             
             # 处理C++代码生成
             elif any(word in user_input.lower() for word in ["c++", "cpp", "c++写", "用c++", "c++的"]):
@@ -2324,10 +2312,10 @@ Purpose: Commander's English music collection"""
                         except Exception as e:
                             print(f"AI API调用失败: {str(e)}")
                             # 如果AI调用失败，返回错误信息
-                            return f"（微微皱眉）抱歉指挥官，AI代码生成失败：{str(e)}"
+                            return f"（微微皱眉）抱歉训练员，AI代码生成失败：{str(e)}"
                     else:
                         # 如果没有API密钥，返回提示信息
-                        return "（微微皱眉）抱歉指挥官，需要配置AI API密钥才能生成代码。请先配置DeepSeek或OpenAI API密钥。"
+                        return "（微微皱眉）抱歉训练员，需要配置AI API密钥才能生成代码。请先配置DeepSeek或OpenAI API密钥。"
                     
                     # 根据用户要求决定是否保存文件
                     if is_save_request:
@@ -2359,7 +2347,7 @@ Purpose: Commander's English music collection"""
                         return f"（指尖轻敲控制台）我已经为您生成了C++代码。如果您需要保存为文件，请告诉我保存位置，比如'保存到D盘'或'保存为{display_filename}'。\n\n```cpp\n{cpp_code}\n```"
                     
                 except Exception as e:
-                    return f"（微微皱眉）抱歉指挥官，创建C++文件时遇到了问题：{str(e)}"
+                    return f"（微微皱眉）抱歉训练员，创建C++文件时遇到了问题：{str(e)}"
             
             # 处理write_file工具调用
             elif "write_file" in user_input.lower() or "写入文件" in user_input or "保存文件" in user_input:
@@ -2415,10 +2403,10 @@ Purpose: Commander's English music collection"""
                         result = self.mcp_server.call_tool("write_file", file_path=file_path, content=content)
                         return f"（指尖轻敲控制台）{result}"
                     else:
-                        return f"（微微皱眉）抱歉指挥官，请提供完整的文件路径和内容。格式：路径为D:/文件名.txt，内容为'文件内容'"
+                        return f"（微微皱眉）抱歉训练员，请提供完整的文件路径和内容。格式：路径为D:/文件名.txt，内容为'文件内容'"
                         
                 except Exception as e:
-                    return f"（微微皱眉）抱歉指挥官，创建文件时遇到了问题：{str(e)}"
+                    return f"（微微皱眉）抱歉训练员，创建文件时遇到了问题：{str(e)}"
             
         # 处理通用保存和文件创建请求（统一优先级）
         elif any(keyword in user_input.lower() for keyword in ["保存", "保存到", "保存为", "写入文件", "创建文件", "创建笔记", "笔记", "清单", "创建测试文件", "创建源文件", "保存到d盘", "保存到d:", "创建清单", "需要创建", "地址在d盘", "地址在d:", "创建好了吗", "保存这个文件", "保存到d盘", "创建可执行", "创建.cbl文件", "创建.py文件", "需要保存", "路径为", "保存为", "创建这个", "这个文件", "地址为", "创建歌单文件", "歌单文件", "创建歌单"]):
@@ -2466,7 +2454,7 @@ Purpose: Commander's English music collection"""
                 return self._fallback_create_note(user_input)
                     
             except Exception as e:
-                return f"（微微皱眉）抱歉指挥官，创建文件时遇到了问题：{str(e)}"
+                return f"（微微皱眉）抱歉训练员，创建文件时遇到了问题：{str(e)}"
         else:
             # 后备机制已禁用，直接返回None
             print("ℹ️ AI智能创建后备机制已禁用")
@@ -2520,7 +2508,7 @@ Purpose: Commander's English music collection"""
                         
                         return self._analyze_weather_quality(weather_result)
                     except Exception as e:
-                        return f"（微微皱眉）抱歉指挥官，分析天气时遇到了问题：{str(e)}"
+                        return f"（微微皱眉）抱歉训练员，分析天气时遇到了问题：{str(e)}"
             else:
                 # 这是天气查询请求，直接获取天气信息
                 try:
@@ -2578,7 +2566,7 @@ Purpose: Commander's English music collection"""
                                 result = AmapTool.get_weather(user_location, amap_key)
                                 return f"（指尖轻敲控制台）{result}"
                     except Exception as e2:
-                        return f"（微微皱眉）抱歉指挥官，获取天气信息时遇到了问题：{str(e2)}"
+                        return f"（微微皱眉）抱歉训练员，获取天气信息时遇到了问题：{str(e2)}"
         
         return None
 
@@ -2973,7 +2961,7 @@ Purpose: Commander's English music collection"""
                     
                     # 如果网站管理中没有找到，返回提示信息
                     if "无法识别网站" in result:
-                        return f"抱歉指挥官，我无法识别网站 '{site_name}'。\n\n可用的网站包括：{', '.join(self.website_map.keys())}\n\n请在网站管理中添加此网站，或者直接提供完整的网址（如：https://www.example.com）"
+                        return f"抱歉训练员，我无法识别网站 '{site_name}'。\n\n可用的网站包括：{', '.join(self.website_map.keys())}\n\n请在网站管理中添加此网站，或者直接提供完整的网址（如：https://www.example.com）"
                     else:
                         return f"（指尖轻敲控制台）{result}"
             
@@ -3030,7 +3018,7 @@ Purpose: Commander's English music collection"""
             
             # 如果都没匹配到，返回错误信息
             available_sites = list(website_map.keys())
-            return f"抱歉指挥官，我无法识别网站 '{site_name}'。\n\n可用的网站包括：{', '.join(available_sites)}\n\n您也可以直接提供完整的网址（如：https://www.example.com）"
+            return f"抱歉训练员，我无法识别网站 '{site_name}'。\n\n可用的网站包括：{', '.join(available_sites)}\n\n您也可以直接提供完整的网址（如：https://www.example.com）"
             
         except Exception as e:
             return f"打开网站时发生错误：{str(e)}"
@@ -3096,7 +3084,7 @@ Purpose: Commander's English music collection"""
                         self.memory_lake.mark_as_important(latest_index)
                     
                     # 构建响应消息
-                    response = f"（轻轻点头）好的指挥官，我已经将这个重要时刻记录到记忆系统中，并标记为重点记忆。"
+                    response = f"（轻轻点头）好的训练员，我已经将这个重要时刻记录到记忆系统中，并标记为重点记忆。"
                     
                     # 根据设置决定是否显示详细信息
                     show_details = self.config.get("show_remember_details", True)
@@ -3114,13 +3102,13 @@ Purpose: Commander's English music collection"""
                     
                     return response
                 else:
-                    return "（微微皱眉）抱歉指挥官，保存到记忆系统时遇到了一些问题。请稍后再试。"
+                    return "（微微皱眉）抱歉训练员，保存到记忆系统时遇到了一些问题。请稍后再试。"
             else:
-                return "（轻轻摇头）指挥官，目前没有需要保存的对话内容。请先进行一些对话，然后再说'记住这个时刻'。"
+                return "（轻轻摇头）训练员，目前没有需要保存的对话内容。请先进行一些对话，然后再说'记住这个时刻'。"
                 
         except Exception as e:
             print(f"处理'记住这个时刻'指令失败: {str(e)}")
-            return "（表情略显困扰）抱歉指挥官，保存过程中遇到了一些技术问题。请稍后再试。"
+            return "（表情略显困扰）抱歉训练员，保存过程中遇到了一些技术问题。请稍后再试。"
 
     def _is_file_analysis_request(self, user_input):
         """检测是否是文件分析请求"""
@@ -3578,7 +3566,7 @@ Purpose: Commander's English music collection"""
             return analysis
             
         except Exception as e:
-            return f"（微微皱眉）抱歉指挥官，分析天气时遇到了问题：{str(e)}"
+            return f"（微微皱眉）抱歉训练员，分析天气时遇到了问题：{str(e)}"
 
     def update_tts_config(self, config):
         """更新TTS配置"""
