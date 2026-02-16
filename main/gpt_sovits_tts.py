@@ -28,11 +28,11 @@ class GPTSoVITSManager:
         self.default_params = {
             "text_lang": "zh",
             "prompt_lang": "zh",
-            "prompt_text": "我是特雷森学园的赛马娘东海帝王。托雷纳，请多指教！",
-            "top_k": 5,
-            "top_p": 1,
-            "temperature": 1,
-            "text_split_method": "cut5",
+            "prompt_text": "",  # 空prompt_text，让模型自动从参考音频中学习
+            "top_k": 15,  # 与gradio调用保持一致
+            "top_p": 1,  # 与gradio调用保持一致
+            "temperature": 1,  # 与gradio调用保持一致
+            "text_split_method": "cut5",  # 与gradio的"凑四句一切"对应
             "batch_size": 1,
             "batch_threshold": 0.75,
             "speed_factor": 1.0,

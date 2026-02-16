@@ -60,13 +60,26 @@ class ImprovedAIAgent:
             tts_engine = config.get("tts_engine", "azure")  # 默认使用Azure TTS
             if tts_engine == "gpt_sovits":
                 # 使用GPT-SoVITS TTS
-                gpt_sovits_api_url = config.get("gpt_sovits_api_url", "http://127.0.0.1:9872")
+                gpt_sovits_api_url = config.get("gpt_sovits_api_url", "http://127.0.0.1:9880")
                 ref_audio_path = config.get("gpt_sovits_ref_audio", "")
-                print(f"🔍 初始化GPT-SoVITS TTS管理器，API地址: {gpt_sovits_api_url}, 参考音频: {ref_audio_path}")
-                from gpt_sovits_simple import SimpleGPTSoVITS
-                self.tts_manager = SimpleGPTSoVITS(gpt_sovits_api_url, ref_audio_path)
+                gpt_sovits_api_type = config.get("gpt_sovits_api_type", "gradio")  # 默认使用gradio
+                t2s_weights_path = config.get("gpt_sovits_t2s_weights", "")
+                vits_weights_path = config.get("gpt_sovits_vits_weights", "")
+
+                print(f"🔍 初始化GPT-SoVITS TTS管理器，API地址: {gpt_sovits_api_url}, API类型: {gpt_sovits_api_type}, 参考音频: {ref_audio_path}")
+                from gpt_sovits_unified import UnifiedGPTSoVITS
+                self.tts_manager = UnifiedGPTSoVITS(gpt_sovits_api_url, ref_audio_path, gpt_sovits_api_type)
                 self.tts_engine = "gpt_sovits"
                 print(f"✅ GPT-SoVITS TTS管理器初始化成功，可用性: {self.tts_manager.is_available()}")
+
+                # 保存模型权重路径，但不立即应用
+                self.t2s_weights_path = t2s_weights_path
+                self.vits_weights_path = vits_weights_path
+
+                # 如果使用api_v2类型且用户设置了模型权重，提示用户需要重启服务
+                if gpt_sovits_api_type == "api_v2" and (t2s_weights_path or vits_weights_path):
+                    print(f"ℹ️ 检测到模型权重设置，T2S: {t2s_weights_path}, VITS: {vits_weights_path}")
+                    print("ℹ️ 请确保api_v2服务已启动，并在需要时手动设置模型权重")
             else:
                 # 使用Azure TTS
                 azure_key = config.get("azure_tts_key", "")
@@ -187,6 +200,34 @@ class ImprovedAIAgent:
     def clear_cache(self):
         """清除响应缓存"""
         self.response_cache.clear()
+
+    def apply_tts_model_weights(self):
+        """应用TTS模型权重设置"""
+        if self.tts_engine != "gpt_sovits" or not self.tts_manager:
+            print("ℹ️ 当前未使用GPT-SoVITS TTS，无法应用模型权重")
+            return False
+
+        if not hasattr(self, 't2s_weights_path') or not hasattr(self, 'vits_weights_path'):
+            print("ℹ️ 未设置模型权重路径")
+            return False
+
+        if not self.t2s_weights_path and not self.vits_weights_path:
+            print("ℹ️ 模型权重路径为空")
+            return False
+
+        try:
+            print(f"🔍 应用模型权重，T2S: {self.t2s_weights_path}, VITS: {self.vits_weights_path}")
+            result = self.tts_manager.set_model_weights(self.t2s_weights_path, self.vits_weights_path)
+            if result:
+                print("✅ 模型权重应用成功")
+            else:
+                print("❌ 模型权重应用失败")
+            return result
+        except Exception as e:
+            print(f"❌ 应用模型权重异常: {e}")
+            import traceback
+            traceback.print_exc()
+            return False
 
     async def get_session_context(self, session_id: str) -> Dict:
         """获取会话上下文"""

@@ -271,6 +271,16 @@ class SettingsDialog(QDialog):
         self.memory_model_combo.setCurrentText(self.config.get("memory_summary_model", "deepseek-reasoner"))
         model_layout.addRow("记忆系统模型:", self.memory_model_combo)
 
+        # 锁定模型选择
+        self.lock_model_checkbox = QCheckBox("锁定模型选择（防止误操作）")
+        lock_model = self.config.get("lock_model", False)
+        self.lock_model_checkbox.setChecked(lock_model)
+        self.lock_model_checkbox.stateChanged.connect(self.on_lock_model_changed)
+        model_layout.addRow("", self.lock_model_checkbox)
+
+        # 根据锁定状态启用/禁用模型选择
+        self.on_lock_model_changed(self.lock_model_checkbox.checkState())
+
         model_group.setLayout(model_layout)
 
         # UI设置
@@ -425,6 +435,16 @@ class SettingsDialog(QDialog):
         self.gpt_sovits_group = QGroupBox("GPT-SoVITS 设置")
         gpt_sovits_layout = QFormLayout()
 
+        # GPT-SoVITS API类型选择
+        self.gpt_sovits_api_type_combo = QComboBox()
+        self.gpt_sovits_api_type_combo.addItems(["gradio", "api_v2"])
+        current_api_type = self.config.get("gpt_sovits_api_type", "gradio")
+        index = self.gpt_sovits_api_type_combo.findText(current_api_type)
+        if index >= 0:
+            self.gpt_sovits_api_type_combo.setCurrentIndex(index)
+        self.gpt_sovits_api_type_combo.currentTextChanged.connect(self.on_gpt_sovits_api_type_changed)
+        gpt_sovits_layout.addRow("API类型:", self.gpt_sovits_api_type_combo)
+
         # GPT-SoVITS API地址
         self.gpt_sovits_api_url_edit = QLineEdit()
         self.gpt_sovits_api_url_edit.setText(self.config.get("gpt_sovits_api_url", "http://127.0.0.1:9880"))
@@ -441,6 +461,51 @@ class SettingsDialog(QDialog):
         ref_audio_layout.addWidget(self.gpt_sovits_ref_audio_edit)
         ref_audio_layout.addWidget(self.browse_ref_audio_button)
         gpt_sovits_layout.addRow("参考音频:", ref_audio_layout)
+
+        # T2S模型权重路径
+        t2s_weights_layout = QHBoxLayout()
+        self.gpt_sovits_t2s_weights_edit = QLineEdit()
+        self.gpt_sovits_t2s_weights_edit.setText(self.config.get("gpt_sovits_t2s_weights", "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s1bert25hz-5kh-longer-epoch=12-step=369668.ckpt"))
+        self.gpt_sovits_t2s_weights_edit.setPlaceholderText("选择T2S模型权重文件")
+        self.browse_t2s_weights_button = QPushButton("浏览...")
+        self.browse_t2s_weights_button.clicked.connect(self.browse_t2s_weights)
+        t2s_weights_layout.addWidget(self.gpt_sovits_t2s_weights_edit)
+        t2s_weights_layout.addWidget(self.browse_t2s_weights_button)
+        gpt_sovits_layout.addRow("T2S模型权重:", t2s_weights_layout)
+
+        # VITS模型权重路径
+        vits_weights_layout = QHBoxLayout()
+        self.gpt_sovits_vits_weights_edit = QLineEdit()
+        self.gpt_sovits_vits_weights_edit.setText(self.config.get("gpt_sovits_vits_weights", "GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/s2G2333k.pth"))
+        self.gpt_sovits_vits_weights_edit.setPlaceholderText("选择VITS模型权重文件")
+        self.browse_vits_weights_button = QPushButton("浏览...")
+        self.browse_vits_weights_button.clicked.connect(self.browse_vits_weights)
+        vits_weights_layout.addWidget(self.gpt_sovits_vits_weights_edit)
+        vits_weights_layout.addWidget(self.browse_vits_weights_button)
+        gpt_sovits_layout.addRow("VITS模型权重:", vits_weights_layout)
+
+        # 应用模型权重按钮
+        apply_weights_layout = QHBoxLayout()
+        self.apply_weights_button = QPushButton("应用模型权重")
+        self.apply_weights_button.clicked.connect(self.apply_model_weights)
+        self.apply_weights_button.setStyleSheet("""
+            QPushButton {
+                background-color: #4CAF50;
+                color: white;
+                border: none;
+                border-radius: 5px;
+                padding: 8px 16px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #45a049;
+            }
+            QPushButton:pressed {
+                background-color: #3d8b40;
+            }
+        """)
+        apply_weights_layout.addWidget(self.apply_weights_button)
+        gpt_sovits_layout.addRow("", apply_weights_layout)
 
         self.gpt_sovits_group.setLayout(gpt_sovits_layout)
         tts_layout.addRow(self.gpt_sovits_group)
@@ -652,6 +717,7 @@ class SettingsDialog(QDialog):
         # 模型设置
         self.config["selected_model"] = self.chat_model_combo.currentText()
         self.config["memory_summary_model"] = self.memory_model_combo.currentText()
+        self.config["lock_model"] = self.lock_model_checkbox.isChecked()
 
         # UI设置
         self.config["window_transparency"] = self.transparency_slider.value()
@@ -677,8 +743,11 @@ class SettingsDialog(QDialog):
         self.config["tts_speaking_rate"] = self.tts_speed_slider.value() / 100.0
         
         # GPT-SoVITS设置
+        self.config["gpt_sovits_api_type"] = self.gpt_sovits_api_type_combo.currentText()
         self.config["gpt_sovits_api_url"] = self.gpt_sovits_api_url_edit.text()
         self.config["gpt_sovits_ref_audio"] = self.gpt_sovits_ref_audio_edit.text()
+        self.config["gpt_sovits_t2s_weights"] = self.gpt_sovits_t2s_weights_edit.text()
+        self.config["gpt_sovits_vits_weights"] = self.gpt_sovits_vits_weights_edit.text()
 
         # 网站快捷方式
         websites = []
@@ -725,6 +794,14 @@ class SettingsDialog(QDialog):
             self.azure_group.setVisible(False)
             self.gpt_sovits_group.setVisible(True)
 
+    def on_gpt_sovits_api_type_changed(self, api_type):
+        """GPT-SoVITS API类型切换事件处理"""
+        # 根据API类型设置默认API地址
+        if api_type == "gradio":
+            self.gpt_sovits_api_url_edit.setText("http://127.0.0.1:9872")
+        elif api_type == "api_v2":
+            self.gpt_sovits_api_url_edit.setText("http://127.0.0.1:9880")
+
     def browse_ref_audio(self):
         """浏览参考音频文件"""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -736,9 +813,91 @@ class SettingsDialog(QDialog):
         if file_path:
             self.gpt_sovits_ref_audio_edit.setText(file_path)
 
+    def browse_t2s_weights(self):
+        """浏览T2S模型权重文件"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择T2S模型权重文件",
+            "",
+            "权重文件 (*.ckpt);;All Files (*)"
+        )
+        if file_path:
+            self.gpt_sovits_t2s_weights_edit.setText(file_path)
+
+    def browse_vits_weights(self):
+        """浏览VITS模型权重文件"""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "选择VITS模型权重文件",
+            "",
+            "权重文件 (*.pth);;All Files (*)"
+        )
+        if file_path:
+            self.gpt_sovits_vits_weights_edit.setText(file_path)
+
+    def apply_model_weights(self):
+        """应用模型权重"""
+        # 检查是否选择了GPT-SoVITS作为TTS引擎
+        engine_text = self.tts_engine_combo.currentText()
+        if engine_text != "GPT-SoVITS":
+            QMessageBox.warning(self, "警告", "请先选择GPT-SoVITS作为TTS引擎")
+            return
+
+        # 检查是否选择了api_v2作为API类型
+        api_type = self.gpt_sovits_api_type_combo.currentText()
+        if api_type != "api_v2":
+            QMessageBox.warning(self, "警告", "只有api_v2类型支持动态切换模型权重")
+            return
+
+        # 检查是否设置了模型权重路径
+        t2s_weights_path = self.gpt_sovits_t2s_weights_edit.text()
+        vits_weights_path = self.gpt_sovits_vits_weights_edit.text()
+
+        if not t2s_weights_path and not vits_weights_path:
+            QMessageBox.warning(self, "警告", "请先设置模型权重路径")
+            return
+
+        # 检查文件是否存在
+        if t2s_weights_path and not os.path.exists(t2s_weights_path):
+            QMessageBox.warning(self, "错误", f"T2S模型权重文件不存在: {t2s_weights_path}")
+            return
+
+        if vits_weights_path and not os.path.exists(vits_weights_path):
+            QMessageBox.warning(self, "错误", f"VITS模型权重文件不存在: {vits_weights_path}")
+            return
+
+        # 应用模型权重
+        try:
+            # 获取主窗口的agent实例
+            parent = self.parent()
+            while parent and not hasattr(parent, 'agent'):
+                parent = parent.parent()
+
+            if not parent or not hasattr(parent, 'agent'):
+                QMessageBox.warning(self, "错误", "无法获取AI Agent实例")
+                return
+
+            # 应用模型权重
+            result = parent.agent.apply_tts_model_weights()
+            if result:
+                QMessageBox.information(self, "成功", "模型权重应用成功")
+            else:
+                QMessageBox.warning(self, "失败", "模型权重应用失败，请查看控制台日志")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"应用模型权重时发生异常: {str(e)}")
+            import traceback
+            traceback.print_exc()
+
     def on_speed_changed(self, value):
         """语速改变事件处理"""
         self.tts_speed_label.setText(f"{value/100:.1f}x")
+
+    def on_lock_model_changed(self, state):
+        """锁定模型选择状态变化事件处理"""
+        is_locked = (state == Qt.Checked)
+        # 根据锁定状态启用/禁用模型选择
+        self.chat_model_combo.setEnabled(not is_locked)
+        self.memory_model_combo.setEnabled(not is_locked)
 
     def _get_region_name(self, region_code: str) -> str:
         """获取区域名称"""
