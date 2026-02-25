@@ -26,6 +26,11 @@ class AIAgentApp(QMainWindow):
         self.config = config
         self.agent = ImprovedAIAgent(config)
         
+        # 初始化ASR状态
+        self.asr_enabled = config.get("asr_enabled", True)
+        self.asr_recording = False  # 是否正在录音
+        self.asr_thread = None  # ASR线程
+
         # 初始化UI
         self.init_ui()
         
@@ -87,23 +92,19 @@ class AIAgentApp(QMainWindow):
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(window_width, window_height)  # 固定窗口大小
         
-        # 设置窗口样式
-        self.setStyleSheet("""
-            QMainWindow {
-                background-color: #f5f5f5;
-                color: #333333;
-            }
-        """)
+        # 不为主窗口设置样式表，让调色板控制整体颜色
         
         # 创建中央部件
         main_widget = QWidget()
+        main_widget.setAutoFillBackground(True)  # 启用自动填充背景，使用调色板颜色
         main_layout = QVBoxLayout()
         main_layout.setSpacing(10)
         main_layout.setContentsMargins(10, 10, 10, 10)
         
         # 聊天区域 (占用3/4宽度)
         chat_widget = QWidget()
-        chat_widget.setStyleSheet("background-color: #f5f5f5; border-radius: 10px;")
+        chat_widget.setAutoFillBackground(True)  # 启用自动填充背景，使用调色板颜色
+        # 不设置样式表，让调色板控制颜色
         chat_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         chat_layout = QVBoxLayout()
         chat_layout.setSpacing(10)
@@ -174,6 +175,14 @@ class AIAgentApp(QMainWindow):
             }
         """)
 
+        # 录音按钮（切换开关）
+        self.record_btn = QPushButton("🎤")
+        self.record_btn.setCheckable(True)  # 设置为可切换状态
+        self.record_btn.setToolTip("语音识别开关")
+        self.record_btn.clicked.connect(self.toggle_asr)
+        self.record_btn.setChecked(self.asr_enabled)  # 设置初始状态
+        self.update_record_button_style()  # 更新按钮样式
+
         send_btn = QPushButton("发送")
         send_btn.setShortcut("Ctrl+Return")
         send_btn.clicked.connect(self.send_message)
@@ -220,6 +229,7 @@ class AIAgentApp(QMainWindow):
         
         input_container.addWidget(self.input_edit)
         input_container.addWidget(image_btn)
+        input_container.addWidget(self.record_btn)
         input_container.addWidget(send_btn)
         input_container.addWidget(self.progress_bar)
 
@@ -230,7 +240,8 @@ class AIAgentApp(QMainWindow):
 
         # 右侧预留区域 (占用1/4宽度，用于Live2D)
         right_widget = QWidget()
-        right_widget.setStyleSheet("background-color: #f5f5f5; border-radius: 10px;")
+        right_widget.setAutoFillBackground(True)  # 启用自动填充背景，使用调色板颜色
+        # 不设置样式表，让调色板控制颜色
         right_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         right_layout = QVBoxLayout()
         right_layout.setSpacing(5)  # 进一步减少间距，让半身像更接近状态栏
@@ -766,6 +777,123 @@ class AIAgentApp(QMainWindow):
     def handle_timeout(self):
         """处理超时"""
         print("⏰ 处理超时")
+
+    def toggle_asr(self):
+        """切换ASR开关状态"""
+        self.asr_enabled = self.record_btn.isChecked()
+        self.update_record_button_style()
+
+        # 更新配置
+        self.config["asr_enabled"] = self.asr_enabled
+
+        # 显示状态消息
+        if self.asr_enabled:
+            self.add_message("系统", "🎤 语音识别已开启")
+            # 如果ASR管理器可用，启动录音
+            if hasattr(self.agent, 'asr_manager') and self.agent.asr_manager.is_available():
+                self.start_asr_recording()
+        else:
+            self.add_message("系统", "🎤 语音识别已关闭")
+            # 停止录音
+            self.stop_asr_recording()
+
+    def update_record_button_style(self):
+        """更新录音按钮样式"""
+        if self.asr_enabled:
+            # 开启状态：使用红色渐变
+            self.record_btn.setStyleSheet("""
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #EF5350, stop:1 #C62828);
+                    color: #FFFFFF;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #E53935, stop:1 #B71C1C);
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                }
+                QPushButton:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #D32F2F, stop:1 #8B0000);
+                }
+            """)
+        else:
+            # 关闭状态：使用绿色渐变
+            self.record_btn.setStyleSheet("""
+                QPushButton {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
+                    color: #FFFFFF;
+                    border: none;
+                    border-radius: 8px;
+                    padding: 8px 12px;
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+                QPushButton:hover {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
+                    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+                }
+                QPushButton:pressed {
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
+                }
+            """)
+
+    def start_asr_recording(self):
+        """开始ASR录音"""
+        if not hasattr(self.agent, 'asr_manager') or not self.agent.asr_manager.is_available():
+            self.add_message("系统", "⚠️ ASR未配置或不可用")
+            self.record_btn.setChecked(False)
+            self.asr_enabled = False
+            self.update_record_button_style()
+            return
+
+        if self.asr_recording:
+            return
+
+        self.asr_recording = True
+        self.add_message("系统", "🎤 开始录音...")
+
+        # 在单独的线程中处理录音和识别
+        self.asr_thread = threading.Thread(target=self._run_asr, daemon=True)
+        self.asr_thread.start()
+
+    def stop_asr_recording(self):
+        """停止ASR录音"""
+        self.asr_recording = False
+        if hasattr(self, 'asr_thread') and self.asr_thread:
+            # 注意：这里只是设置标志，实际停止需要在_run_asr中处理
+            pass
+
+    def _run_asr(self):
+        """在单独的线程中运行ASR"""
+        try:
+            # 获取配置
+            language = self.config.get("asr_language", "auto")
+            use_itn = self.config.get("asr_use_itn", False)
+
+            # 录音并识别
+            text, audio_file = self.agent.asr_manager.record_and_transcribe(
+                duration=None,
+                language=language,
+                use_itn=use_itn,
+                keep_audio=False
+            )
+
+            # 更新录音状态
+            self.asr_recording = False
+
+            if text:
+                # 将识别结果作为用户输入
+                print(f"🎤 识别结果: {text}")
+                self.response_ready.emit(text)
+            else:
+                self.response_ready.emit("录音识别失败，请重试")
+        except Exception as e:
+            self.asr_recording = False
+            print(f"❌ ASR错误: {str(e)}")
+            self.response_ready.emit(f"录音识别错误: {str(e)}")
         
         # 检查是否是图片分析
         is_image_analysis = "分析图片中" in self.progress_bar.format()

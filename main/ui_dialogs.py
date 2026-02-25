@@ -811,17 +811,19 @@ class MemoryLakeDialog(QDialog):
         stats_group = QGroupBox("记忆统计")
         stats_group.setStyleSheet("""
             QGroupBox {
-                color: #cdd6f4;
+                color: #333333;
                 font-size: 14px;
-                border: 1px solid #45475a;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 margin-top: 1ex;
+                background-color: #f5f5f5;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
-                background-color: #1e1e2e;
+                background-color: #f5f5f5;
+                color: #333333;
             }
         """)
         stats_layout = QHBoxLayout()
@@ -1261,17 +1263,19 @@ class MCPToolsDialog(QDialog):
         tools_group = QGroupBox("可用工具")
         tools_group.setStyleSheet("""
             QGroupBox {
-                color: #cdd6f4;
+                color: #333333;
                 font-size: 14px;
-                border: 1px solid #45475a;
+                border: 1px solid #d0d0d0;
                 border-radius: 5px;
                 margin-top: 2ex;
+                background-color: #f5f5f5;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
                 left: 10px;
                 padding: 0 5px 0 5px;
-                background-color: #1e1e2e;
+                background-color: #f5f5f5;
+                color: #333333;
             }
         """)
         tools_layout = QVBoxLayout()

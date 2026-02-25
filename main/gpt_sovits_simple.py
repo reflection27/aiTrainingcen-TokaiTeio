@@ -14,7 +14,7 @@ from gradio_client import Client, file
 class SimpleGPTSoVITS:
     """简化的GPT-SoVITS TTS调用类"""
 
-    def __init__(self, api_url="http://127.0.0.1:9872", ref_audio_path=""):
+    def __init__(self, api_url="http://127.0.0.1:9880", ref_audio_path=""):  # API地址已更新为9880端口
         self.api_url = api_url
         self.ref_audio_path = ref_audio_path
         self.enabled = False

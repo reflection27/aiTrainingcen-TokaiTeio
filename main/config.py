@@ -34,8 +34,14 @@ def load_config():
         "azure_region": "eastasia",  # Azure区域
         "tts_voice": "zh-CN-XiaoxiaoNeural",  # TTS语音
         "tts_speaking_rate": 1.0,  # TTS语速
-        "gpt_sovits_api_url": "http://127.0.0.1:9872",  # GPT-SoVITS API地址
+        "gpt_sovits_api_url": "http://127.0.0.1:9880",  # GPT-SoVITS API地址 (已迁移到main/plugins/GPT-SoVITS)
         "gpt_sovits_ref_audio": "",  # GPT-SoVITS参考音频路径
+        # ASR设置
+        "asr_enabled": True,  # 是否启用ASR（默认开启）
+        "asr_plugin_path": "plugins/SenseVoice",  # SenseVoice插件路径
+        "asr_sample_rate": 16000,  # 音频采样率
+        "asr_language": "auto",  # ASR语言设置：auto, zh, en等
+        "asr_use_itn": False,  # 是否使用ITN（数字文本化）
         "ai_fallback_enabled": True,  # 是否启用AI智能创建的后备机制（关键词识别）
         "website_map": {
             "哔哩哔哩": "https://www.bilibili.com",

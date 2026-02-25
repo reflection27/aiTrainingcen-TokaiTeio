@@ -6,6 +6,7 @@
 """
 
 import asyncio
+import os
 from typing import Dict, Optional, List
 from openai import AsyncOpenAI
 from improved_memory import ImprovedMemorySystem
@@ -41,6 +42,11 @@ class ImprovedAIAgent:
         self.tts_manager = None
         self.tts_engine = None
         self._init_tts_manager(config)
+
+        # 初始化ASR管理器
+        self.asr_manager = None
+        self.asr_enabled = False
+        self._init_asr_manager(config)
 
         # 响应缓存
         self.response_cache: Dict[str, str] = {}
@@ -97,6 +103,44 @@ class ImprovedAIAgent:
             print(f"⚠️ TTS管理器初始化失败: {str(e)}")
             self.tts_manager = None
             self.tts_engine = None
+
+    def _init_asr_manager(self, config: Dict):
+        """初始化ASR管理器"""
+        try:
+            asr_enabled = config.get("asr_enabled", True)
+            if asr_enabled:
+                asr_plugin_path = config.get("asr_plugin_path", "plugins/SenseVoice")
+                asr_sample_rate = config.get("asr_sample_rate", 16000)
+
+                # 导入SenseVoice插件
+                import sys
+                plugin_dir = os.path.join(os.path.dirname(__file__), asr_plugin_path)
+
+                # 将插件目录添加到sys.path
+                if plugin_dir not in sys.path:
+                    sys.path.insert(0, plugin_dir)
+
+                # 导入SenseVoiceASR
+                from sensevoice_asr import SenseVoiceASR
+
+                print(f"🔍 初始化ASR管理器，插件路径: {asr_plugin_path}, 采样率: {asr_sample_rate}")
+                self.asr_manager = SenseVoiceASR(
+                    sample_rate=asr_sample_rate,
+                    language=config.get("asr_language", "auto"),
+                    use_itn=config.get("asr_use_itn", False)
+                )
+                self.asr_enabled = True
+                print(f"✅ ASR管理器初始化成功，可用性: {self.asr_manager.is_available()}")
+            else:
+                self.asr_manager = None
+                self.asr_enabled = False
+                print("ℹ️ ASR功能未启用")
+        except Exception as e:
+            print(f"⚠️ ASR管理器初始化失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.asr_manager = None
+            self.asr_enabled = False
 
     def _register_default_tools(self):
         """注册默认工具"""

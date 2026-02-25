@@ -877,6 +877,10 @@ class SettingsDialog(QDialog):
                 QMessageBox.warning(self, "错误", "无法获取AI Agent实例")
                 return
 
+            # 先更新config中的模型权重路径
+            parent.agent.config["gpt_sovits_t2s_weights"] = t2s_weights_path
+            parent.agent.config["gpt_sovits_vits_weights"] = vits_weights_path
+            
             # 应用模型权重
             result = parent.agent.apply_tts_model_weights()
             if result:

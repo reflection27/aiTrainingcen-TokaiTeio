@@ -30,7 +30,7 @@ except ImportError:
 class UnifiedGPTSoVITS:
     """统一的GPT-SoVITS TTS调用类，支持gradio和api_v2两种方式"""
 
-    def __init__(self, api_url="http://127.0.0.1:9872", ref_audio_path="", api_type="gradio"):
+    def __init__(self, api_url="http://127.0.0.1:9880", ref_audio_path="", api_type="api_v2"):  # 默认使用api_v2，端口9880
         """
         初始化统一的GPT-SoVITS TTS调用类
 

@@ -25,18 +25,18 @@ def main():
     
     # 创建调色板
     palette = QPalette()
-    palette.setColor(QPalette.Window, QColor(30, 30, 46))  # 深蓝色背景
-    palette.setColor(QPalette.WindowText, QColor(205, 214, 244))  # 浅蓝色文本
-    palette.setColor(QPalette.Base, QColor(24, 24, 37))  # 更深的基础色
-    palette.setColor(QPalette.AlternateBase, QColor(49, 50, 68))  # 交替基础色
-    palette.setColor(QPalette.ToolTipBase, QColor(180, 190, 254))  # 工具提示基础色
-    palette.setColor(QPalette.ToolTipText, QColor(24, 24, 37))  # 工具提示文本
-    palette.setColor(QPalette.Text, QColor(205, 214, 244))  # 文本颜色
-    palette.setColor(QPalette.Button, QColor(49, 50, 68))  # 按钮颜色
-    palette.setColor(QPalette.ButtonText, QColor(205, 214, 244))  # 按钮文本
-    palette.setColor(QPalette.BrightText, QColor(245, 224, 220))  # 亮色文本
-    palette.setColor(QPalette.Highlight, QColor(137, 180, 250))  # 高亮色
-    palette.setColor(QPalette.HighlightedText, QColor(24, 24, 37))  # 高亮文本
+    palette.setColor(QPalette.Window, QColor(245, 245, 245))  # 浅灰色背景
+    palette.setColor(QPalette.WindowText, QColor(51, 51, 51))  # 深灰色文本
+    palette.setColor(QPalette.Base, QColor(255, 255, 255))  # 白色基础色
+    palette.setColor(QPalette.AlternateBase, QColor(245, 245, 245))  # 浅灰色交替基础色
+    palette.setColor(QPalette.ToolTipBase, QColor(255, 255, 220))  # 浅黄色工具提示基础色
+    palette.setColor(QPalette.ToolTipText, QColor(0, 0, 0))  # 黑色工具提示文本
+    palette.setColor(QPalette.Text, QColor(51, 51, 51))  # 文本颜色
+    palette.setColor(QPalette.Button, QColor(240, 240, 240))  # 浅灰色按钮
+    palette.setColor(QPalette.ButtonText, QColor(51, 51, 51))  # 深灰色按钮文本
+    palette.setColor(QPalette.BrightText, QColor(255, 0, 0))  # 红色亮色文本
+    palette.setColor(QPalette.Highlight, QColor(74, 144, 226))  # 蓝色高亮色
+    palette.setColor(QPalette.HighlightedText, QColor(255, 255, 255))  # 白色高亮文本
     
     app.setPalette(palette)
     

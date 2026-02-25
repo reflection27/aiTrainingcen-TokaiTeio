@@ -18,7 +18,7 @@ from typing import Optional, Callable
 class GPTSoVITSManager:
     """GPT-SoVITS TTS管理器"""
 
-    def __init__(self, api_url="http://127.0.0.1:9880", ref_audio_path=""):
+    def __init__(self, api_url="http://127.0.0.1:9880", ref_audio_path=""):  # API地址已更新为9880端口
         self.api_url = api_url
         self.ref_audio_path = ref_audio_path
         self.enabled = False
@@ -29,24 +29,30 @@ class GPTSoVITSManager:
             "text_lang": "zh",
             "prompt_lang": "zh",
             "prompt_text": "",  # 空prompt_text，让模型自动从参考音频中学习
-            "top_k": 15,  # 与gradio调用保持一致
-            "top_p": 1,  # 与gradio调用保持一致
-            "temperature": 1,  # 与gradio调用保持一致
+            "top_k": 12,  # 降低top_k值以减少随机性，提高音质稳定性
+            "top_p": 0.85,  # 调整top_p值以平衡多样性和稳定性
+            "temperature": 0.7,  # 降低temperature以减少生成不稳定性和电流音
             "text_split_method": "cut5",  # 与gradio的"凑四句一切"对应
             "batch_size": 1,
             "batch_threshold": 0.75,
             "speed_factor": 1.0,
-            "seed": -1,
+            "seed": 42,  # 固定随机种子以提高一致性
             "media_type": "wav",
             "streaming_mode": False,
             "parallel_infer": True,
             "repetition_penalty": 1.35
         }
 
-        # 初始化pygame音频
+        # 初始化pygame音频 - 优化参数以减少电流音和播放不稳定
         try:
-            pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
+            pygame.mixer.init(
+                frequency=22050,  # 与GPT-SoVITS输出采样率匹配
+                size=-16,         # 16位有符号音频
+                channels=1,       # 单声道以减少立体声处理问题
+                buffer=2048       # 增加buffer大小以减少爆音和电流音
+            )
             self.audio_available = True
+            print("✅ 音频系统初始化成功")
         except Exception as e:
             print(f"⚠️ 音频初始化失败: {e}")
             self.audio_available = False
@@ -119,7 +125,7 @@ class GPTSoVITSManager:
             return None
 
     def play_audio(self, audio_file: str):
-        """播放音频文件"""
+        """播放音频文件 - 优化播放逻辑以减少电流音"""
         if not self.audio_available:
             return
 
@@ -127,15 +133,21 @@ class GPTSoVITSManager:
             # 停止当前播放
             if self.is_playing:
                 pygame.mixer.music.stop()
+                time.sleep(0.05)  # 短暂等待确保完全停止
 
             # 播放新音频
             pygame.mixer.music.load(audio_file)
             pygame.mixer.music.play()
             self.is_playing = True
+            self.stop_playback = False  # 重置停止标志
 
-            # 等待播放完成
+            # 等待播放完成 - 使用更精确的等待逻辑
             while pygame.mixer.music.get_busy() and not self.stop_playback:
-                time.sleep(0.1)
+                time.sleep(0.05)  # 减少等待间隔，提高响应速度
+
+            # 播放结束后停止音乐
+            if pygame.mixer.music.get_busy():
+                pygame.mixer.music.stop()
 
             self.is_playing = False
 
