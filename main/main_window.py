@@ -26,10 +26,14 @@ class AIAgentApp(QMainWindow):
         self.config = config
         self.agent = ImprovedAIAgent(config)
         
-        # 初始化ASR状态
-        self.asr_enabled = config.get("asr_enabled", True)
+        # 初始化ASR状态 - 根据agent的ASR状态来设置，而不是直接从配置文件获取
+        self.asr_enabled = getattr(self.agent, 'asr_enabled', False) and config.get("asr_enabled", True)
         self.asr_recording = False  # 是否正在录音
         self.asr_thread = None  # ASR线程
+
+        # 初始化ASR集成模块
+        self.asr_integration = None
+        self._init_asr_integration()
 
         # 初始化UI
         self.init_ui()
@@ -48,6 +52,66 @@ class AIAgentApp(QMainWindow):
         # 检查是否是第一次运行，如果是则进行自我介绍
         self.check_first_run_and_introduce()
     
+    def _init_asr_integration(self):
+        """初始化ASR集成模块"""
+        try:
+            # 检查ASR是否启用
+            if not self.asr_enabled:
+                print("ℹ️ ASR未启用，跳过ASR集成模块初始化")
+                return
+
+            # 检查ASR管理器是否可用
+            if not hasattr(self.agent, 'asr_manager') or self.agent.asr_manager is None:
+                print("ℹ️ ASR管理器不可用，跳过ASR集成模块初始化")
+                return
+
+            # 初始化ASR集成模块
+            from asr_integration import ASRIntegration
+            self.asr_integration = ASRIntegration(self.config)
+
+            # 连接信号
+            self.asr_integration.text_ready.connect(self._on_asr_text_ready)
+            self.asr_integration.error_occurred.connect(self._on_asr_error)
+
+            print("✅ ASR集成模块初始化成功")
+        except Exception as e:
+            print(f"⚠️ ASR集成模块初始化失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            self.asr_integration = None
+
+    def _on_asr_text_ready(self, text):
+        """ASR文本识别完成回调"""
+        print(f"🎤 识别到文本: {text}")
+
+        # 停止录音
+        if self.asr_integration:
+            self.asr_integration.stop_asr()
+
+        # 如果识别到的文本不为空，则发送消息
+        if text and text.strip():
+            # 将识别到的文本添加到输入框
+            self.input_edit.setText(text.strip())
+            # 自动发送消息
+            self.send_message()
+
+        # 更新录音状态
+        self.asr_recording = False
+
+    def _on_asr_error(self, error_msg):
+        """ASR错误回调"""
+        print(f"❌ ASR错误: {error_msg}")
+
+        # 停止录音
+        if self.asr_integration:
+            self.asr_integration.stop_asr()
+
+        # 更新录音状态
+        self.asr_recording = False
+
+        # 显示错误消息
+        self.response_ready.emit(f"⚠️ 语音识别错误: {error_msg}")
+
     def apply_transparency(self):
         """应用窗口透明度设置"""
         try:
@@ -842,7 +906,7 @@ class AIAgentApp(QMainWindow):
 
     def start_asr_recording(self):
         """开始ASR录音"""
-        if not hasattr(self.agent, 'asr_manager') or not self.agent.asr_manager.is_available():
+        if not hasattr(self.agent, 'asr_manager') or self.agent.asr_manager is None:
             self.add_message("系统", "⚠️ ASR未配置或不可用")
             self.record_btn.setChecked(False)
             self.asr_enabled = False
@@ -868,32 +932,10 @@ class AIAgentApp(QMainWindow):
 
     def _run_asr(self):
         """在单独的线程中运行ASR"""
-        try:
-            # 获取配置
-            language = self.config.get("asr_language", "auto")
-            use_itn = self.config.get("asr_use_itn", False)
-
-            # 录音并识别
-            text, audio_file = self.agent.asr_manager.record_and_transcribe(
-                duration=None,
-                language=language,
-                use_itn=use_itn,
-                keep_audio=False
-            )
-
-            # 更新录音状态
-            self.asr_recording = False
-
-            if text:
-                # 将识别结果作为用户输入
-                print(f"🎤 识别结果: {text}")
-                self.response_ready.emit(text)
-            else:
-                self.response_ready.emit("录音识别失败，请重试")
-        except Exception as e:
-            self.asr_recording = False
-            print(f"❌ ASR错误: {str(e)}")
-            self.response_ready.emit(f"录音识别错误: {str(e)}")
+        # ASR功能未配置
+        self.asr_recording = False
+        self.response_ready.emit("⚠️ ASR功能未配置，请先配置ASR模型")
+        # ASR功能未配置，不再需要超时处理
         
         # 检查是否是图片分析
         is_image_analysis = "分析图片中" in self.progress_bar.format()

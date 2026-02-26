@@ -109,34 +109,91 @@ class ImprovedAIAgent:
         try:
             asr_enabled = config.get("asr_enabled", True)
             if asr_enabled:
-                asr_plugin_path = config.get("asr_plugin_path", "plugins/SenseVoice")
-                asr_sample_rate = config.get("asr_sample_rate", 16000)
+                asr_engine = config.get("asr_engine", "realtimestt")
 
-                # 导入SenseVoice插件
-                import sys
-                plugin_dir = os.path.join(os.path.dirname(__file__), asr_plugin_path)
+                if asr_engine == "realtimestt":
+                    # 使用RealtimeSTT
+                    try:
+                        from realtimestt_asr import RealtimeSTTASR
 
-                # 将插件目录添加到sys.path
-                if plugin_dir not in sys.path:
-                    sys.path.insert(0, plugin_dir)
+                        asr_model = config.get("asr_model", "small")
+                        asr_language = config.get("asr_language", "zh")
+                        asr_device = config.get("asr_device", "cuda")
+                        asr_enable_realtime = config.get("asr_enable_realtime", True)
+                        asr_silero_sensitivity = config.get("asr_silero_sensitivity", 0.4)
+                        asr_post_speech_silence = config.get("asr_post_speech_silence", 0.6)
+                        asr_min_length_of_recording = config.get("asr_min_length_of_recording", 0.5)
 
-                # 导入SenseVoiceASR
-                from sensevoice_asr import SenseVoiceASR
+                        print(f"🔍 初始化RealtimeSTT ASR管理器，模型: {asr_model}, 语言: {asr_language}, 设备: {asr_device}")
+                        self.asr_manager = RealtimeSTTASR(
+                            model=asr_model,
+                            language=asr_language,
+                            device=asr_device,
+                            enable_realtime_transcription=asr_enable_realtime,
+                            silero_sensitivity=asr_silero_sensitivity,
+                            post_speech_silence_duration=asr_post_speech_silence,
+                            min_length_of_recording=asr_min_length_of_recording,
+                            spinner=False
+                        )
+                        self.asr_enabled = True
+                        print(f"✅ RealtimeSTT ASR管理器初始化成功")
+                    except ImportError:
+                        print(f"⚠️ 无法导入RealtimeSTT模块")
+                        print("ℹ️ 请先安装RealtimeSTT: pip install RealtimeSTT")
+                        print("ℹ️ ASR功能已禁用，但其他功能正常")
+                        self.asr_manager = None
+                        self.asr_enabled = False
+                    except Exception as e:
+                        print(f"⚠️ RealtimeSTT初始化失败: {str(e)}")
+                        import traceback
+                        traceback.print_exc()
+                        self.asr_manager = None
+                        self.asr_enabled = False
+                else:
+                    # 使用SenseVoice（保留兼容性）
+                    asr_plugin_path = config.get("asr_plugin_path", "plugins/SenseVoice")
+                    asr_sample_rate = config.get("asr_sample_rate", 16000)
 
-                print(f"🔍 初始化ASR管理器，插件路径: {asr_plugin_path}, 采样率: {asr_sample_rate}")
-                self.asr_manager = SenseVoiceASR(
-                    sample_rate=asr_sample_rate,
-                    language=config.get("asr_language", "auto"),
-                    use_itn=config.get("asr_use_itn", False)
-                )
-                self.asr_enabled = True
-                print(f"✅ ASR管理器初始化成功，可用性: {self.asr_manager.is_available()}")
+                    # 检查插件目录是否存在
+                    import sys
+                    plugin_dir = os.path.join(os.path.dirname(__file__), asr_plugin_path)
+
+                    if not os.path.exists(plugin_dir):
+                        print(f"⚠️ ASR插件目录不存在: {plugin_dir}")
+                        print("ℹ️ ASR功能已禁用，但其他功能正常")
+                        self.asr_manager = None
+                        self.asr_enabled = False
+                        return
+
+                    # 将插件目录添加到sys.path
+                    if plugin_dir not in sys.path:
+                        sys.path.insert(0, plugin_dir)
+
+                    # 检查SenseVoiceASR模块是否存在
+                    try:
+                        from sensevoice_asr import SenseVoiceASR
+                    except ImportError:
+                        print(f"⚠️ 无法导入SenseVoiceASR模块")
+                        print("ℹ️ ASR功能已禁用，但其他功能正常")
+                        self.asr_manager = None
+                        self.asr_enabled = False
+                        return
+
+                    print(f"🔍 初始化SenseVoice ASR管理器，插件路径: {asr_plugin_path}, 采样率: {asr_sample_rate}")
+                    self.asr_manager = SenseVoiceASR(
+                        sample_rate=asr_sample_rate,
+                        language=config.get("asr_language", "auto"),
+                        use_itn=config.get("asr_use_itn", False)
+                    )
+                    self.asr_enabled = True
+                    print(f"✅ SenseVoice ASR管理器初始化成功，可用性: {self.asr_manager.is_available()}")
             else:
                 self.asr_manager = None
                 self.asr_enabled = False
                 print("ℹ️ ASR功能未启用")
         except Exception as e:
             print(f"⚠️ ASR管理器初始化失败: {str(e)}")
+            print("ℹ️ ASR功能已禁用，但其他功能正常")
             import traceback
             traceback.print_exc()
             self.asr_manager = None
