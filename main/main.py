@@ -85,7 +85,13 @@ class TextInputRequestHandler(BaseHTTPRequestHandler):
                         
                         # 将事件发送到主窗口
                         print(f"📤 发送事件到主窗口: {text.strip()}")
-                        QApplication.postEvent(main_window_instance, TextEvent(text.strip()))
+                        text_event = TextEvent(text.strip())
+                        print(f"📝 事件类型: {text_event.type()}, TextEvent.EVENT_TYPE: {TextEvent.EVENT_TYPE}")
+
+                        # 将事件放入事件队列中，确保在主线程中处理
+                        print(f"📤 准备将事件放入事件队列...")
+                        QApplication.postEvent(main_window_instance, text_event)
+                        print(f"✅ 事件已放入事件队列")
                         
                         self._send_json_response(200, {"status": "success", "message": "文本已接收"})
                     else:
@@ -185,7 +191,7 @@ def main():
                 print(f"✅ 文本已设置到输入框: {event.text}")
                 print(f"📄 输入框当前文本: {window.input_edit.text()}")
 
-                # 使用QTimer延迟调用send_message，以便文本能够显示在UI上
+                # 使用QTimer.singleShot确保send_message在主线程中调用
                 from PyQt5.QtCore import QTimer
                 QTimer.singleShot(100, window.send_message)
                 print(f"📤 已安排延迟调用send_message方法")
@@ -194,6 +200,31 @@ def main():
             return original_event(event)
         
         window.event = custom_event
+
+        # 创建事件过滤器
+        from PyQt5.QtCore import QObject
+        class TextEventFilter(QObject):
+            def eventFilter(self, obj, event):
+                # 只处理自定义文本输入事件
+                if hasattr(event, 'EVENT_TYPE') and event.type() == event.EVENT_TYPE:
+                    print(f"📝 事件过滤器接收到自定义事件，文本: {event.text}")
+                    # 将文本设置到输入框
+                    window.input_edit.setText(event.text)
+                    print(f"✅ 文本已设置到输入框: {event.text}")
+                    print(f"📄 输入框当前文本: {window.input_edit.text()}")
+
+                    # 使用QTimer.singleShot确保send_message在主线程中调用
+                    from PyQt5.QtCore import QTimer
+                    QTimer.singleShot(100, window.send_message)
+                    print(f"📤 已安排延迟调用send_message方法")
+                    return True
+                # 其他事件交给原始事件过滤器处理
+                return False
+
+        # 安装事件过滤器
+        event_filter = TextEventFilter()
+        QApplication.instance().installEventFilter(event_filter)
+        print("✅ 事件过滤器已安装")
 
         # 启动HTTP服务器（在新线程中）
         print("🌐 启动HTTP服务器...")
