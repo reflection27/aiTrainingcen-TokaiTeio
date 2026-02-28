@@ -1,0 +1,197 @@
+﻿
+# -*- coding: utf-8 -*-
+"""
+STT鏈嶅姟鍣?
+鍦ㄥ崟鐙殑铏氭嫙鐜涓繍琛岋紝鎻愪緵璇煶璇嗗埆API
+"""
+
+import sys
+import os
+import json
+import tempfile
+import wave
+import base64
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs
+
+# 娣诲姞 RealtimeSTT 璺緞
+realtimestt_path = os.path.join(os.path.dirname(__file__), 'plugins', 'RealtimeSTT-master')
+if realtimestt_path not in sys.path:
+    sys.path.insert(0, realtimestt_path)
+
+from RealtimeSTT import AudioToTextRecorder
+
+# 鍏ㄥ眬鍙橀噺
+recorder = None
+
+def init_recorder():
+    """鍒濆鍖栬闊宠瘑鍒櫒"""
+    global recorder
+    try:
+        print("馃帳 鍒濆鍖?RealtimeSTT 璇煶璇嗗埆鍣?..")
+
+        # 瀵煎叆RealtimeSTT閰嶇疆
+        from realtimestt_config import REALTIMESTT_CONFIG
+
+        # 妫€鏌SR鏄惁鍚敤
+        if not REALTIMESTT_CONFIG.get("asr_enabled", False):
+            print("鈿狅笍 ASR鍔熻兘鏈惎鐢紝璇峰湪閰嶇疆涓缃產sr_enabled涓篢rue")
+            return False
+
+        # 浠嶳ealtimeSTT閰嶇疆涓幏鍙栧弬鏁帮紝濡傛灉娌℃湁鍒欎娇鐢ㄩ粯璁ゅ€?
+        model = REALTIMESTT_CONFIG.get("asr_model", "large-v3")
+        language = REALTIMESTT_CONFIG.get("asr_language", "zh")
+        silero_sensitivity = REALTIMESTT_CONFIG.get("asr_silero_sensitivity", 0.4)
+        post_speech_silence_duration = REALTIMESTT_CONFIG.get("asr_post_speech_silence", 0.7)
+        min_gap_between_recordings = REALTIMESTT_CONFIG.get("asr_min_gap", 0.5)
+        enable_realtime_transcription = REALTIMESTT_CONFIG.get("asr_realtime", True)
+        realtime_processing_pause = REALTIMESTT_CONFIG.get("asr_realtime_pause", 0.2)
+        realtime_batch_size = REALTIMESTT_CONFIG.get("asr_realtime_batch", 5)
+
+        # 鍒涘缓 AudioToTextRecorder 瀹炰緥
+        recorder = AudioToTextRecorder(
+            model=model,
+            language=language,
+            spinner=True,
+            silero_sensitivity=silero_sensitivity,
+            post_speech_silence_duration=post_speech_silence_duration,
+            min_gap_between_recordings=min_gap_between_recordings,
+            enable_realtime_transcription=enable_realtime_transcription,
+            realtime_processing_pause=realtime_processing_pause,
+            realtime_batch_size=realtime_batch_size,
+            on_realtime_transcription_stabilized=lambda text: print(f"鈿?瀹炴椂: {text}"),  # 瀹炴椂杞綍鍥炶皟
+        )
+
+        print("鉁?RealtimeSTT 璇煶璇嗗埆鍣ㄥ垵濮嬪寲鎴愬姛")
+        return True
+    except Exception as e:
+        print(f"鉂?鍒濆鍖?RealtimeSTT 澶辫触: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+class STTRequestHandler(BaseHTTPRequestHandler):
+    """STT璇锋眰澶勭悊鍣?""
+
+    def _send_json_response(self, status_code, data):
+        """鍙戦€丣SON鍝嶅簲"""
+        self.send_response(status_code)
+        self.send_header('Content-Type', 'application/json')
+        self.end_headers()
+        self.wfile.write(json.dumps(data, ensure_ascii=False).encode('utf-8'))
+
+    def _send_cors_headers(self):
+        """鍙戦€丆ORS澶?""
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+
+    def do_OPTIONS(self):
+        """澶勭悊OPTIONS璇锋眰"""
+        self.send_response(200)
+        self._send_cors_headers()
+        self.end_headers()
+
+    def do_GET(self):
+        """澶勭悊GET璇锋眰"""
+        parsed_path = urlparse(self.path)
+
+        if parsed_path.path == '/api/stt/status':
+            # 鐘舵€丄PI
+            self._send_json_response(200, {
+                "status": "ready" if recorder else "not_initialized"
+            })
+        else:
+            self._send_json_response(404, {"error": "Not found"})
+
+    def do_POST(self):
+        """澶勭悊POST璇锋眰"""
+        global recorder
+        parsed_path = urlparse(self.path)
+
+        if parsed_path.path == '/api/stt/recognize':
+            # 璇煶璇嗗埆API
+            if not recorder:
+                if not init_recorder():
+                    self._send_json_response(500, {"error": "璇煶璇嗗埆鍣ㄥ垵濮嬪寲澶辫触"})
+                    return
+
+            try:
+                # 鑾峰彇闊抽鏁版嵁
+                content_length = int(self.headers['Content-Length'])
+                print(f"馃帳 鎺ユ敹鍒伴煶棰戞暟鎹紝澶у皬: {content_length} 瀛楄妭")
+                audio_data = self.rfile.read(content_length)
+
+                if not audio_data:
+                    print("鉂?鏈彁渚涢煶棰戞暟鎹?)
+                    self._send_json_response(400, {"error": "鏈彁渚涢煶棰戞暟鎹?})
+                    return
+
+                # 楠岃瘉闊抽鏁版嵁鏄惁涓烘湁鏁堢殑WAV鏂囦欢
+                if len(audio_data) < 44:
+                    print("鉂?闊抽鏁版嵁澶皬锛屼笉鏄湁鏁堢殑WAV鏂囦欢")
+                    self._send_json_response(400, {"error": "闊抽鏁版嵁澶皬锛屼笉鏄湁鏁堢殑WAV鏂囦欢"})
+                    return
+
+                # 妫€鏌AV鏂囦欢澶?
+                if not audio_data.startswith(b'RIFF') or not audio_data[8:12] == b'WAVE':
+                    print("鉂?闊抽鏁版嵁涓嶆槸鏈夋晥鐨刉AV鏂囦欢鏍煎紡")
+                    self._send_json_response(400, {"error": "闊抽鏁版嵁涓嶆槸鏈夋晥鐨刉AV鏂囦欢鏍煎紡"})
+                    return
+
+                # 浣跨敤RealtimeSTT杩涜璇煶璇嗗埆
+                print("馃帳 姝ｅ湪杩涜璇煶璇嗗埆...")
+                try:
+                    # 鐩存帴浣跨敤闊抽鏁版嵁杩涜璇嗗埆
+                    text = recorder.text(audio_data)
+                    print(f"馃摑 璇嗗埆缁撴灉: {text}")
+
+                    if text and text.strip():
+                        self._send_json_response(200, {"text": text.strip()})
+                    else:
+                        print("鈿狅笍 鏈瘑鍒埌鏈夋晥鏂囨湰")
+                        self._send_json_response(200, {"text": ""})  # 杩斿洖绌哄瓧绗︿覆鑰屼笉鏄敊璇?
+                except Exception as e:
+                    print(f"鉂?璇嗗埆杩囩▼寮傚父: {str(e)}")
+                    import traceback
+                    traceback.print_exc()
+                    self._send_json_response(500, {"error": f"璇嗗埆寮傚父: {str(e)}"})
+            except Exception as e:
+                print(f"鉂?璇煶璇嗗埆澶辫触: {str(e)}")
+                import traceback
+                traceback.print_exc()
+                self._send_json_response(500, {"error": f"璇煶璇嗗埆澶辫触: {str(e)}"})
+        elif parsed_path.path == '/api/stt/shutdown':
+            # 鍏抽棴API
+            if recorder:
+                try:
+                    recorder.shutdown()
+                    recorder = None
+                    print("鉁?RealtimeSTT 宸插叧闂?)
+                except Exception as e:
+                    print(f"鉂?鍏抽棴RealtimeSTT澶辫触: {str(e)}")
+            self._send_json_response(200, {"status": "shutdown"})
+        else:
+            self._send_json_response(404, {"error": "Not found"})
+
+    def log_message(self, format, *args):
+        """閲嶅啓鏃ュ織鏂规硶锛屽噺灏戣緭鍑?""
+        pass
+
+if __name__ == '__main__':
+    # 鍒濆鍖栬闊宠瘑鍒櫒
+    if init_recorder():
+        # 鍚姩HTTP鏈嶅姟鍣?
+        print("馃殌 鍚姩STT鏈嶅姟鍣?..")
+        server = HTTPServer(('127.0.0.1', 5001), STTRequestHandler)
+        print("鉁?STT鏈嶅姟鍣ㄥ凡鍚姩锛岀洃鍚湴鍧€: http://127.0.0.1:5001")
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("\n馃洃 姝ｅ湪鍋滄STT鏈嶅姟鍣?..")
+            server.shutdown()
+            print("鉁?STT鏈嶅姟鍣ㄥ凡鍋滄")
+    else:
+        print("鉂?鏃犳硶鍚姩STT鏈嶅姟鍣?)
+        sys.exit(1)
+

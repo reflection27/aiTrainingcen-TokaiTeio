@@ -26,14 +26,15 @@ class AIAgentApp(QMainWindow):
         self.config = config
         self.agent = ImprovedAIAgent(config)
         
-        # 初始化ASR状态 - 根据agent的ASR状态来设置，而不是直接从配置文件获取
-        self.asr_enabled = getattr(self.agent, 'asr_enabled', False) and config.get("asr_enabled", True)
+        # 初始化ASR状态
+        self.asr_enabled = config.get("asr_enabled", False)
         self.asr_recording = False  # 是否正在录音
         self.asr_thread = None  # ASR线程
 
         # 初始化ASR集成模块
         self.asr_integration = None
-        self._init_asr_integration()
+        # 延迟初始化ASR集成模块，避免启动时闪退
+        # ASR将在用户点击录音按钮时才初始化
 
         # 初始化UI
         self.init_ui()
@@ -60,11 +61,6 @@ class AIAgentApp(QMainWindow):
                 print("ℹ️ ASR未启用，跳过ASR集成模块初始化")
                 return
 
-            # 检查ASR管理器是否可用
-            if not hasattr(self.agent, 'asr_manager') or self.agent.asr_manager is None:
-                print("ℹ️ ASR管理器不可用，跳过ASR集成模块初始化")
-                return
-
             # 初始化ASR集成模块
             from asr_integration import ASRIntegration
             self.asr_integration = ASRIntegration(self.config)
@@ -79,6 +75,7 @@ class AIAgentApp(QMainWindow):
             import traceback
             traceback.print_exc()
             self.asr_integration = None
+            raise  # 重新抛出异常，让调用者处理
 
     def _on_asr_text_ready(self, text):
         """ASR文本识别完成回调"""
@@ -239,12 +236,12 @@ class AIAgentApp(QMainWindow):
             }
         """)
 
-        # 录音按钮（切换开关）
+        # 录音按钮（切换开关）- 已禁用，因为现在通过HTTP接口接收STT文本
         self.record_btn = QPushButton("🎤")
         self.record_btn.setCheckable(True)  # 设置为可切换状态
-        self.record_btn.setToolTip("语音识别开关")
-        self.record_btn.clicked.connect(self.toggle_asr)
-        self.record_btn.setChecked(self.asr_enabled)  # 设置初始状态
+        self.record_btn.setToolTip("语音识别已通过STT服务器处理")
+        self.record_btn.setEnabled(False)  # 禁用按钮
+        self.record_btn.setChecked(False)  # 设置初始状态
         self.update_record_button_style()  # 更新按钮样式
 
         send_btn = QPushButton("发送")
@@ -540,9 +537,57 @@ class AIAgentApp(QMainWindow):
         """)
         mcp_btn.clicked.connect(self.open_mcp_tools)
 
+        # 测试按钮
+        test_btn = QPushButton("测试")
+        test_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #EF5350, stop:1 #C62828);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 15px;
+                font-weight: bold;
+                font-size: 14px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #E53935, stop:1 #B71C1C);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #D32F2F, stop:1 #8B0000);
+            }
+        """)
+        test_btn.clicked.connect(self.test_add_message)
+
+        # 测试自定义事件按钮
+        test_event_btn = QPushButton("测试事件")
+        test_event_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AB47BC, stop:1 #7B1FA2);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 15px;
+                font-weight: bold;
+                font-size: 14px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9C27B0, stop:1 #6A1B9A);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8E24AA, stop:1 #4A148C);
+            }
+        """)
+        test_event_btn.clicked.connect(self.test_custom_event)
+
         button_layout.addWidget(settings_btn)
         button_layout.addWidget(memory_btn)
         button_layout.addWidget(mcp_btn)
+        button_layout.addWidget(test_btn)
+        button_layout.addWidget(test_event_btn)
 
         right_layout.addWidget(status_group)
         right_layout.addWidget(live2d_label)  # 移除stretch参数，让图片按实际尺寸显示
@@ -575,18 +620,33 @@ class AIAgentApp(QMainWindow):
 
     def add_message(self, sender, message):
         """添加消息到聊天历史"""
+        print(f"📝 add_message被调用，发送者: {sender}, 消息: {message}")
+
+        # 检查chat_history是否可见
+        print(f"👁️ chat_history是否可见: {self.chat_history.isVisible()}")
+        print(f"👁️ chat_history是否启用: {self.chat_history.isEnabled()}")
+
         timestamp = datetime.datetime.now().strftime("%H:%M:%S")
         formatted_msg = f"[{timestamp}] {sender}: {message}\n"
         
         # 获取当前文本并添加新消息
         current_text = self.chat_history.toPlainText()
+        print(f"📄 当前聊天历史长度: {len(current_text)}")
         new_text = current_text + formatted_msg
+        print(f"📄 新聊天历史长度: {len(new_text)}")
         self.chat_history.setPlainText(new_text)
+        print(f"✅ 文本已设置到chat_history")
         
         # 滚动到底部
         self.chat_history.verticalScrollBar().setValue(
             self.chat_history.verticalScrollBar().maximum()
         )
+
+        # 验证文本是否正确设置
+        actual_text = self.chat_history.toPlainText()
+        print(f"📄 实际聊天历史长度: {len(actual_text)}")
+        if len(actual_text) != len(new_text):
+            print("⚠️ 文本设置失败！")
 
     def send_image(self):
         """上传并分析图片"""
@@ -684,11 +744,15 @@ class AIAgentApp(QMainWindow):
     def send_message(self):
         """发送消息"""
         user_input = self.input_edit.text().strip()
+        print(f"📝 send_message被调用，用户输入: {user_input}")
         if not user_input:
+            print("⚠️ 用户输入为空，不发送消息")
             return
 
+        print(f"📤 添加消息到聊天历史: {user_input}")
         self.add_message("训练员", user_input)
         self.input_edit.clear()
+        print("✅ 输入框已清空")
 
         # 显示进度条
         self.progress_bar.setVisible(True)
@@ -853,9 +917,8 @@ class AIAgentApp(QMainWindow):
         # 显示状态消息
         if self.asr_enabled:
             self.add_message("系统", "🎤 语音识别已开启")
-            # 如果ASR管理器可用，启动录音
-            if hasattr(self.agent, 'asr_manager') and self.agent.asr_manager.is_available():
-                self.start_asr_recording()
+            # 启动录音
+            self.start_asr_recording()
         else:
             self.add_message("系统", "🎤 语音识别已关闭")
             # 停止录音
@@ -906,12 +969,22 @@ class AIAgentApp(QMainWindow):
 
     def start_asr_recording(self):
         """开始ASR录音"""
-        if not hasattr(self.agent, 'asr_manager') or self.agent.asr_manager is None:
-            self.add_message("系统", "⚠️ ASR未配置或不可用")
-            self.record_btn.setChecked(False)
-            self.asr_enabled = False
-            self.update_record_button_style()
-            return
+        # 延迟初始化ASR集成模块
+        if not self.asr_integration:
+            try:
+                self._init_asr_integration()
+                if not self.asr_integration:
+                    self.add_message("系统", "⚠️ ASR未配置或不可用")
+                    self.record_btn.setChecked(False)
+                    self.asr_enabled = False
+                    self.update_record_button_style()
+                    return
+            except Exception as e:
+                self.add_message("系统", f"⚠️ ASR初始化失败: {str(e)}")
+                self.record_btn.setChecked(False)
+                self.asr_enabled = False
+                self.update_record_button_style()
+                return
 
         if self.asr_recording:
             return
@@ -919,16 +992,14 @@ class AIAgentApp(QMainWindow):
         self.asr_recording = True
         self.add_message("系统", "🎤 开始录音...")
 
-        # 在单独的线程中处理录音和识别
-        self.asr_thread = threading.Thread(target=self._run_asr, daemon=True)
-        self.asr_thread.start()
+        # 启动ASR
+        self.asr_integration.start_asr()
 
     def stop_asr_recording(self):
         """停止ASR录音"""
         self.asr_recording = False
-        if hasattr(self, 'asr_thread') and self.asr_thread:
-            # 注意：这里只是设置标志，实际停止需要在_run_asr中处理
-            pass
+        if self.asr_integration:
+            self.asr_integration.stop_asr()
 
     def _run_asr(self):
         """在单独的线程中运行ASR"""
@@ -973,6 +1044,44 @@ class AIAgentApp(QMainWindow):
         """打开MCP工具窗口"""
         mcp_dialog = MCPToolsDialog(self.agent.mcp_tools, self)
         mcp_dialog.exec_()
+
+    def test_add_message(self):
+        """测试添加消息到聊天历史"""
+        test_message = "这是一条测试消息，用于验证文本是否能够正确显示在聊天历史中。"
+        print(f"🧪 测试添加消息: {test_message}")
+
+        # 将测试消息设置到输入框
+        self.input_edit.setText(test_message)
+        # 调用send_message方法，触发AI的回复
+        self.send_message()
+
+    def test_custom_event(self):
+        """测试自定义事件"""
+        test_message = "这是一条测试消息，用于验证自定义事件是否能够正确处理。"
+        print(f"🧪 测试自定义事件: {test_message}")
+
+        # 创建自定义事件（使用与main.py中相同的TextEvent类）
+        from PyQt5.QtCore import QEvent
+        class TextEvent(QEvent):
+            EVENT_TYPE = QEvent.User + 1
+
+            def __init__(self, text):
+                super().__init__(TextEvent.EVENT_TYPE)
+                self.text = text
+
+        # 创建事件对象
+        text_event = TextEvent(test_message)
+        print(f"📝 创建了自定义事件对象: {text_event.text}")
+        print(f"📝 事件类型: {text_event.type()}, TextEvent.EVENT_TYPE: {TextEvent.EVENT_TYPE}")
+
+        # 直接调用custom_event函数
+        print(f"📤 准备调用custom_event函数...")
+        import main
+        # 获取main.py中定义的custom_event函数
+        # 注意：这里我们需要访问main.py中的window.event，但window是局部变量
+        # 所以我们直接调用self.event方法，它应该已经被custom_event函数覆盖
+        self.event(text_event)
+        print(f"✅ custom_event函数已调用")
 
     def sync_time(self):
         """同步网络时间"""

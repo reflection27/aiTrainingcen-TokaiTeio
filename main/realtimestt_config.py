@@ -8,7 +8,7 @@ RealtimeSTT 配置文件
 # RealtimeSTT 配置
 REALTIMESTT_CONFIG = {
     # ASR 模型配置
-    "asr_enabled": True,  # 是否启用 ASR
+    "asr_enabled": True,  # 是否启用 ASR（默认关闭）
     "asr_model": "large-v3",  # Whisper 模型: tiny, base, small, medium, large-v3
     "asr_language": "zh",  # 语言: zh(中文), en(英文), auto(自动检测)
 

@@ -38,15 +38,6 @@ def load_config():
         "gpt_sovits_ref_audio": "",  # GPT-SoVITS参考音频路径
         # ASR设置
         "asr_enabled": True,  # 是否启用ASR（默认开启）
-        "asr_engine": "realtimestt",  # ASR引擎：realtimestt或sensevoice
-        "asr_model": "small",  # RealtimeSTT模型大小：tiny, base, small, medium, large-v1, large-v2
-        "asr_language": "zh",  # ASR语言设置：zh, en等
-        "asr_sample_rate": 16000,  # 音频采样率
-        "asr_device": "cuda",  # 设备类型：cuda或cpu
-        "asr_enable_realtime": True,  # 是否启用实时转录
-        "asr_silero_sensitivity": 0.4,  # Silero VAD灵敏度（0-1）
-        "asr_post_speech_silence": 0.6,  # 语音结束后的静音时长（秒）
-        "asr_min_length_of_recording": 0.5,  # 最小录音时长（秒）
         "ai_fallback_enabled": True,  # 是否启用AI智能创建的后备机制（关键词识别）
         "website_map": {
             "哔哩哔哩": "https://www.bilibili.com",
