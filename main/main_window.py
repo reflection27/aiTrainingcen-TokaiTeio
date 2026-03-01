@@ -675,7 +675,7 @@ class AIAgentApp(QMainWindow):
             # 添加超时保护
             self.timeout_timer = QTimer()
             self.timeout_timer.timeout.connect(self.handle_timeout)
-            self.timeout_timer.start(180000)  # 180秒超时，给图片分析更多时间
+            self.timeout_timer.start(35000)  # 35秒超时，与AI代理的超时时间保持一致
 
             # 在单独的线程中处理图片分析（使用asyncio）
             threading.Thread(target=self._run_async_image_analysis, args=(file_path,), daemon=True).start()
@@ -769,7 +769,7 @@ class AIAgentApp(QMainWindow):
         # 添加超时保护，防止进度条无限卡住
         self.timeout_timer = QTimer()
         self.timeout_timer.timeout.connect(self.handle_timeout)
-        self.timeout_timer.start(240000)  # 240秒超时，给AI更多时间
+        self.timeout_timer.start(35000)  # 35秒超时，与AI代理的30秒超时保持一致，留5秒余量
 
         # 在单独的线程中处理响应（使用asyncio）
         threading.Thread(target=self._run_async_response, args=(user_input,), daemon=True).start()

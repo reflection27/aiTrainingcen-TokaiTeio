@@ -35,7 +35,8 @@ class ImprovedAIAgent:
         api_key = config.get("deepseek_key", "")
         self.client = AsyncOpenAI(
             api_key=api_key,
-            base_url="https://api.deepseek.com/v1"
+            base_url="https://api.deepseek.com/v1",
+            timeout=30.0  # 设置默认超时为30秒
         )
 
         # 初始化TTS管理器
@@ -47,8 +48,13 @@ class ImprovedAIAgent:
         self.asr_manager = None
         self.asr_enabled = False
 
-        # 响应缓存
+        # 响应缓存（优化版：增加缓存大小限制）
         self.response_cache: Dict[str, str] = {}
+        self.max_cache_size = 1000  # 最大缓存1000条
+        self.cache_access_count: Dict[str, int] = {}  # 记录缓存访问次数
+
+        # 请求去重（防止短时间内重复请求）
+        self.pending_requests: Dict[str, asyncio.Task] = {}
 
         # 会话管理
         self.active_sessions: Dict[str, Dict] = {}
@@ -117,33 +123,60 @@ class ImprovedAIAgent:
         user_id: str = "default",
         session_id: str = "default"
     ) -> str:
-        """异步处理用户命令"""
+        """异步处理用户命令（优化版）"""
         # 检查缓存
         cache_key = f"{session_id}:{user_input}"
         if cache_key in self.response_cache:
+            # 更新缓存访问计数
+            self.cache_access_count[cache_key] = self.cache_access_count.get(cache_key, 0) + 1
             return self.response_cache[cache_key]
 
-        # 获取上下文
-        context = await self.memory.get_context_async(session_id, user_input)
+        # 检查是否有正在处理的相同请求
+        if cache_key in self.pending_requests:
+            # 等待正在处理的请求完成
+            return await self.pending_requests[cache_key]
 
-        # 构建完整的prompt
-        full_prompt = self._build_prompt(user_input, context)
+        # 创建新任务
+        async def _process():
+            try:
+                # 获取上下文
+                context = await self.memory.get_context_async(session_id, user_input)
 
-        # 调用AI
-        response = await self._call_ai_async(full_prompt)
+                # 构建完整的prompt
+                full_prompt = self._build_prompt(user_input, context)
 
-        # 保存对话
-        await self.memory.save_conversation_async(
-            user_input,
-            response,
-            user_id,
-            session_id
-        )
+                # 调用AI
+                response = await self._call_ai_async(full_prompt)
 
-        # 缓存响应
-        self.response_cache[cache_key] = response
+                # 保存对话
+                await self.memory.save_conversation_async(
+                    user_input,
+                    response,
+                    user_id,
+                    session_id
+                )
 
-        return response
+                # 缓存响应（带大小限制）
+                if len(self.response_cache) >= self.max_cache_size:
+                    # 删除最少使用的缓存项
+                    lru_key = min(self.cache_access_count, key=self.cache_access_count.get)
+                    del self.response_cache[lru_key]
+                    del self.cache_access_count[lru_key]
+
+                self.response_cache[cache_key] = response
+                self.cache_access_count[cache_key] = 1
+
+                return response
+            finally:
+                # 清除待处理请求标记
+                if cache_key in self.pending_requests:
+                    del self.pending_requests[cache_key]
+
+        # 创建并存储任务
+        task = asyncio.create_task(_process())
+        self.pending_requests[cache_key] = task
+
+        return await task
 
     def _build_prompt(self, user_input: str, context: Dict) -> str:
         """构建完整的prompt"""
@@ -170,19 +203,27 @@ class ImprovedAIAgent:
         return "\n".join(prompt_parts)
 
     async def _call_ai_async(self, prompt: str) -> str:
-        """异步调用AI"""
+        """异步调用AI（优化版）"""
         try:
             model = self.config.get("selected_model", "deepseek-chat")
 
-            response = await self.client.chat.completions.create(
-                model=model,
-                messages=[
-                    {"role": "system", "content": self._get_system_prompt()},
-                    {"role": "user", "content": prompt}
-                ],
-                max_tokens=2048,
-                temperature=0.7
-            )
+            # 添加超时控制
+            import asyncio
+            try:
+                response = await asyncio.wait_for(
+                    self.client.chat.completions.create(
+                        model=model,
+                        messages=[
+                            {"role": "system", "content": self._get_system_prompt()},
+                            {"role": "user", "content": prompt}
+                        ],
+                        max_tokens=2048,
+                        temperature=0.7
+                    ),
+                    timeout=30.0  # 30秒超时
+                )
+            except asyncio.TimeoutError:
+                return "处理超时，请稍后重试"
 
             return response.choices[0].message.content.strip()
         except Exception as e:
