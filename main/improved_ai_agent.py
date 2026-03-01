@@ -56,6 +56,9 @@ class ImprovedAIAgent:
         # 请求去重（防止短时间内重复请求）
         self.pending_requests: Dict[str, asyncio.Task] = {}
 
+        # 后台任务追踪（防止任务泄漏）
+        self.background_tasks: set = set()
+
         # 会话管理
         self.active_sessions: Dict[str, Dict] = {}
         # 添加developer_mode属性以兼容现有代码
@@ -117,13 +120,43 @@ class ImprovedAIAgent:
         self.tool_manager.register_tool(SearchTool(), "search")
         self.tool_manager.register_tool(MusicTool(), "media")
 
+    def _is_simple_query(self, user_input: str) -> bool:
+        """判断是否为简单查询（快速响应模式）"""
+        # 简单查询的特征：
+        # 1. 输入长度较短（< 50字符）
+        # 2. 不包含复杂关键词
+        # 3. 不需要工具调用
+
+        simple_keywords = [
+            '你好', '在吗', '早上好', '晚上好', '中午好', '下午好',
+            '谢谢', '再见', '好的', '嗯', '是', '不是',
+            '知道', '明白', '了解', '清楚'
+        ]
+
+        # 检查是否包含简单关键词
+        if any(keyword in user_input for keyword in simple_keywords):
+            return True
+
+        # 检查输入长度
+        if len(user_input) < 50:
+            # 检查是否包含复杂关键词
+            complex_keywords = [
+                '为什么', '怎么', '如何', '解释', '分析', '详细',
+                '搜索', '查找', '打开', '创建', '保存', '天气',
+                '时间', '计算', '翻译', '写', '生成', '代码'
+            ]
+            if not any(keyword in user_input for keyword in complex_keywords):
+                return True
+
+        return False
+
     async def process_command_async(
         self,
         user_input: str,
         user_id: str = "default",
         session_id: str = "default"
     ) -> str:
-        """异步处理用户命令（优化版）"""
+        """异步处理用户命令（优化版 - 支持快速响应模式）"""
         # 检查缓存
         cache_key = f"{session_id}:{user_input}"
         if cache_key in self.response_cache:
@@ -136,25 +169,61 @@ class ImprovedAIAgent:
             # 等待正在处理的请求完成
             return await self.pending_requests[cache_key]
 
+        # 判断是否使用快速模式（简单问题）
+        fast_mode = self._is_simple_query(user_input)
+
         # 创建新任务
         async def _process():
             try:
-                # 获取上下文
-                context = await self.memory.get_context_async(session_id, user_input)
+                # 并行获取上下文
+                context_task = self.memory.get_context_async(session_id, user_input)
+                context = await context_task
 
-                # 构建完整的prompt
-                full_prompt = self._build_prompt(user_input, context)
+                # 构建prompt（根据是否快速模式）
+                full_prompt = self._build_prompt(user_input, context, fast_mode=fast_mode)
 
-                # 调用AI
-                response = await self._call_ai_async(full_prompt)
+                # 调用AI（快速模式使用流式响应）
+                stream = fast_mode  # 快速模式启用流式响应
+                response = await self._call_ai_async(full_prompt, stream=stream)
 
-                # 保存对话
-                await self.memory.save_conversation_async(
-                    user_input,
-                    response,
-                    user_id,
-                    session_id
+                # 保存对话（异步，不阻塞响应）
+                # 创建后台任务并添加到追踪集合，防止被垃圾回收
+                save_task = asyncio.create_task(
+                    self.memory.save_conversation_async(
+                        user_input,
+                        response,
+                        user_id,
+                        session_id
+                    )
                 )
+                # 添加到后台任务集合
+                self.background_tasks.add(save_task)
+                # 添加完成回调，自动清理任务（带异常处理和事件循环检查）
+                def _cleanup_task(task):
+                    try:
+                        # 检查事件循环是否仍然可用
+                        try:
+                            import asyncio
+                            loop = asyncio.get_running_loop()
+                            if loop.is_closed():
+                                return  # 事件循环已关闭，跳过清理
+                        except RuntimeError:
+                            return  # 没有运行中的事件循环，跳过清理
+
+                        # 安全地清理任务
+                        self.background_tasks.discard(task)
+
+                        # 检查任务是否有异常
+                        try:
+                            exception = task.exception()
+                            if exception:
+                                print(f"⚠️ 后台任务异常: {exception}")
+                        except Exception:
+                            pass  # 忽略获取异常时的错误
+                    except Exception as e:
+                        # 忽略清理过程中的所有错误
+                        pass
+                save_task.add_done_callback(_cleanup_task)
 
                 # 缓存响应（带大小限制）
                 if len(self.response_cache) >= self.max_cache_size:
@@ -178,13 +247,25 @@ class ImprovedAIAgent:
 
         return await task
 
-    def _build_prompt(self, user_input: str, context: Dict) -> str:
-        """构建完整的prompt"""
+    def _build_prompt(self, user_input: str, context: Dict, fast_mode: bool = False) -> str:
+        """构建完整的prompt（优化版 - 支持快速模式）"""
         prompt_parts = []
 
         # 添加系统提示
         prompt_parts.append(f"你是{self.name}，{self.role}。")
 
+        # 快速模式：简化prompt
+        if fast_mode:
+            # 只添加最近1条历史对话
+            if context["history"]:
+                h = context["history"][-1]
+                prompt_parts.append(f"\n最近对话:\n用户: {h['user']}\n助手: {h['assistant']}")
+
+            # 添加当前输入
+            prompt_parts.append(f"\n当前对话:\n用户: {user_input}\n助手:")
+            return "\n".join(prompt_parts)
+
+        # 正常模式：完整prompt
         # 添加知识库内容
         if context["knowledge"]:
             prompt_parts.append("\n[相关知识]")
@@ -193,7 +274,7 @@ class ImprovedAIAgent:
         # 添加历史对话
         if context["history"]:
             prompt_parts.append("\n[历史对话]")
-            for h in reversed(context["history"][-5:]):  # 只取最近5条
+            for h in reversed(context["history"][-3:]):  # 只取最近3条
                 prompt_parts.append(f"用户: {h['user']}")
                 prompt_parts.append(f"助手: {h['assistant']}")
 
@@ -202,30 +283,55 @@ class ImprovedAIAgent:
 
         return "\n".join(prompt_parts)
 
-    async def _call_ai_async(self, prompt: str) -> str:
-        """异步调用AI（优化版）"""
+    async def _call_ai_async(self, prompt: str, stream: bool = False) -> str:
+        """异步调用AI（优化版 - 支持流式响应）"""
         try:
             model = self.config.get("selected_model", "deepseek-chat")
 
             # 添加超时控制
             import asyncio
             try:
-                response = await asyncio.wait_for(
-                    self.client.chat.completions.create(
-                        model=model,
-                        messages=[
-                            {"role": "system", "content": self._get_system_prompt()},
-                            {"role": "user", "content": prompt}
-                        ],
-                        max_tokens=2048,
-                        temperature=0.7
-                    ),
-                    timeout=30.0  # 30秒超时
-                )
+                # 判断是否使用流式响应
+                if stream:
+                    # 流式响应模式 - 更快开始响应
+                    response = await asyncio.wait_for(
+                        self.client.chat.completions.create(
+                            model=model,
+                            messages=[
+                                {"role": "system", "content": self._get_system_prompt()},
+                                {"role": "user", "content": prompt}
+                            ],
+                            max_tokens=1024,  # 减少token数量以加快响应
+                            temperature=0.7,
+                            stream=True
+                        ),
+                        timeout=10.0  # 流式模式10秒超时
+                    )
+
+                    # 收集流式响应
+                    full_response = ""
+                    async for chunk in response:
+                        if chunk.choices[0].delta.content:
+                            full_response += chunk.choices[0].delta.content
+                    return full_response.strip()
+                else:
+                    # 非流式响应模式
+                    response = await asyncio.wait_for(
+                        self.client.chat.completions.create(
+                            model=model,
+                            messages=[
+                                {"role": "system", "content": self._get_system_prompt()},
+                                {"role": "user", "content": prompt}
+                            ],
+                            max_tokens=1024,  # 减少token数量以加快响应
+                            temperature=0.7
+                        ),
+                        timeout=10.0  # 10秒超时
+                    )
+                    return response.choices[0].message.content.strip()
             except asyncio.TimeoutError:
                 return "处理超时，请稍后重试"
 
-            return response.choices[0].message.content.strip()
         except Exception as e:
             return f"处理出错: {str(e)}"
 
@@ -246,6 +352,46 @@ class ImprovedAIAgent:
     def clear_cache(self):
         """清除响应缓存"""
         self.response_cache.clear()
+
+    async def cleanup(self):
+        """清理所有后台任务和资源"""
+        import asyncio
+
+        # 取消所有待处理请求
+        for cache_key, task in self.pending_requests.items():
+            if not task.done():
+                task.cancel()
+                try:
+                    await asyncio.wait_for(task, timeout=1.0)
+                except (asyncio.CancelledError, asyncio.TimeoutError):
+                    pass
+        self.pending_requests.clear()
+
+        # 等待所有后台任务完成或取消
+        if self.background_tasks:
+            try:
+                # 尝试优雅地等待所有任务完成
+                await asyncio.wait_for(
+                    asyncio.gather(*self.background_tasks, return_exceptions=True),
+                    timeout=2.0
+                )
+            except asyncio.TimeoutError:
+                # 超时后强制取消所有任务
+                for task in self.background_tasks:
+                    if not task.done():
+                        task.cancel()
+                        try:
+                            await asyncio.wait_for(task, timeout=0.5)
+                        except (asyncio.CancelledError, asyncio.TimeoutError):
+                            pass
+
+        self.background_tasks.clear()
+
+        # 清理缓存
+        self.response_cache.clear()
+        self.cache_access_count.clear()
+
+        print("✅ ImprovedAIAgent 清理完成")
 
     def apply_tts_model_weights(self):
         """应用TTS模型权重设置"""

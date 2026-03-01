@@ -45,13 +45,9 @@ class UnifiedGPTSoVITS:
         self.enabled = False
         self.client = None
 
-        # 初始化pygame音频
-        try:
-            pygame.mixer.init(frequency=22050, size=-16, channels=2, buffer=512)
-            self.audio_available = True
-        except Exception as e:
-            print(f"⚠️ 音频初始化失败: {e}")
-            self.audio_available = False
+        # 初始化pygame音频（延迟到获取音频参数后）
+        self.audio_available = True
+        self.mixer_initialized = False  # 标记是否已根据实际参数初始化
 
         # 检查API是否可用
         self._check_api_availability()
@@ -171,24 +167,327 @@ class UnifiedGPTSoVITS:
                 "speed_factor": 1.15,  # 稍微提高语速，减少大喘气
                 "seed": -1,
                 "media_type": "wav",
-                "streaming_mode": False,
+                "streaming_mode": True,  # 启用流式模式，加快响应速度
                 "parallel_infer": True,
                 "repetition_penalty": 1.35
             }
 
             # 发送请求
-            print(f"🔍 调用GPT-SoVITS API v2，文本: {text[:50]}...")
+            print(f"🔍 调用GPT-SoVITS API v2（流式模式），文本: {text[:50]}...")
             print(f"🔍 参考音频: {self.ref_audio_path}")
             response = requests.post(
                 f"{self.api_url}/tts",
                 json=data,
-                timeout=60
+                timeout=60,
+                stream=True  # 启用流式响应
             )
 
             if response.status_code == 200:
-                # 保存音频数据
-                with open(temp_file.name, 'wb') as f:
-                    f.write(response.content)
+                # 流式接收音频数据
+                import queue
+                import threading
+                import wave
+                import struct
+
+                # 创建两个队列：一个用于播放，一个用于保存
+                play_queue = queue.Queue(maxsize=10)  # 播放队列
+                save_queue = queue.Queue(maxsize=10)  # 保存队列
+                audio_params = None
+                first_chunk_received = False
+                total_bytes = 0
+                chunk_count = 0
+
+                # 接收音频数据的线程
+                def receive_audio():
+                    nonlocal audio_params, first_chunk_received, total_bytes, chunk_count
+                    try:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                # 同时放入两个队列
+                                play_queue.put(chunk)
+                                save_queue.put(chunk)
+
+                                total_bytes += len(chunk)
+                                chunk_count += 1
+
+                                # 第一个chunk，解析WAV头
+                                if not first_chunk_received and len(chunk) >= 44:
+                                    if chunk[:4] == b'RIFF' and chunk[8:12] == b'WAVE':
+                                        # 提取音频参数
+                                        audio_params = {
+                                            'channels': struct.unpack('<H', chunk[22:24])[0],
+                                            'sample_rate': struct.unpack('<I', chunk[24:28])[0],
+                                            'sample_width': struct.unpack('<H', chunk[34:36])[0] // 8
+                                        }
+                                        print(f"🔍 音频参数: 声道={audio_params['channels']}, 采样率={audio_params['sample_rate']}Hz, 位深={audio_params['sample_width']*8}bit")
+                                        first_chunk_received = True
+
+                                # 实时反馈进度（每10个chunk输出一次）
+                                if chunk_count % 10 == 0:
+                                    print(f"📥 接收音频数据: {chunk_count} chunks, 总计: {total_bytes} bytes")
+
+                        print(f"📥 音频接收完成: {chunk_count} chunks, {total_bytes} bytes")
+                    except Exception as e:
+                        print(f"❌ 接收音频数据失败: {e}")
+                        import traceback
+                        traceback.print_exc()
+                    finally:
+                        # 发送结束信号到两个队列
+                        play_queue.put(None)
+                        save_queue.put(None)
+
+                # 启动接收线程
+                receive_thread = threading.Thread(target=receive_audio)
+                receive_thread.start()
+
+                # 等待音频参数
+                while audio_params is None:
+                    time.sleep(0.1)
+
+                # 播放音频的线程
+                def play_audio():
+                    try:
+                        import numpy as np
+                        import pygame.sndarray as sndarray
+
+                        # 初始化pygame mixer（使用实际音频参数）
+                        # 先关闭已初始化的mixer
+                        if pygame.mixer.get_init():
+                            pygame.mixer.quit()
+
+                        # 重新初始化pygame mixer
+                        pygame.mixer.init(
+                            frequency=audio_params['sample_rate'],
+                            size=-16 if audio_params['sample_width'] == 2 else -8,
+                            channels=audio_params['channels'],
+                            buffer=512
+                        )
+                        print(f"✅ Pygame mixer已初始化: {audio_params['sample_rate']}Hz, {audio_params['channels']}声道")
+                        print(f"🔍 Mixer状态: init={pygame.mixer.get_init()}, num_channels={pygame.mixer.get_num_channels()}")
+
+                        # 累积PCM数据
+                        pcm_data = b''
+
+                        while True:
+                            chunk = play_queue.get()
+                            if chunk is None:  # 结束信号
+                                break
+
+                            # 查找data chunk的位置
+                            if len(chunk) >= 44 and chunk[:4] == b'RIFF' and chunk[8:12] == b'WAVE':
+                                # 跳过WAV头，只保留PCM数据
+                                data_pos = 36
+                                while data_pos < len(chunk) - 8:
+                                    chunk_id = chunk[data_pos:data_pos+4]
+                                    chunk_size = struct.unpack('<I', chunk[data_pos+4:data_pos+8])[0]
+
+                                    if chunk_id == b'data':
+                                        pcm_data += chunk[data_pos+8:]
+                                        break
+
+                                    data_pos += 8 + chunk_size
+                            else:
+                                pcm_data += chunk
+
+                            # 当积累足够的PCM数据时，播放
+                            if len(pcm_data) >= audio_params['sample_width'] * audio_params['channels'] * audio_params['sample_rate']:
+                                # 将PCM数据转换为numpy数组
+                                audio_array = np.frombuffer(pcm_data, dtype=np.int16)
+
+                                print(f"🔍 调试信息: channels={audio_params['channels']}, sample_width={audio_params['sample_width']}, array_shape={audio_array.shape}, mixer_channels={pygame.mixer.get_num_channels()}")
+
+                                # 根据声道数调整数组形状
+                                if audio_params['channels'] == 2:
+                                    # 立体声：确保数据长度是偶数
+                                    if len(audio_array) % 2 != 0:
+                                        audio_array = audio_array[:-1]
+                                    audio_array = audio_array.reshape(-1, 2)
+                                    print(f"🔍 立体声数组形状: {audio_array.shape}")
+                                else:
+                                    # 单声道：确保是一维数组
+                                    audio_array = audio_array.reshape(-1)
+                                    # 如果mixer是立体声，需要将单声道转换为立体声
+                                    if pygame.mixer.get_init()[2] == 2:
+                                        audio_array = np.column_stack((audio_array, audio_array))
+                                        print(f"🔍 单声道转立体声数组形状: {audio_array.shape}")
+                                    else:
+                                        print(f"🔍 单声道数组形状: {audio_array.shape}")
+
+                                # 播放音频
+                                sound = sndarray.make_sound(audio_array)
+                                sound.play()
+
+                                # 等待播放完成
+                                while pygame.mixer.get_busy():
+                                    time.sleep(0.01)
+
+                                # 清空PCM数据
+                                pcm_data = b''
+
+                        # 播放剩余的PCM数据
+                        if len(pcm_data) > 0:
+                            audio_array = np.frombuffer(pcm_data, dtype=np.int16)
+
+                            # 根据声道数调整数组形状
+                            if audio_params['channels'] == 2:
+                                # 立体声：确保数据长度是偶数
+                                if len(audio_array) % 2 != 0:
+                                    audio_array = audio_array[:-1]
+                                audio_array = audio_array.reshape(-1, 2)
+                            else:
+                                # 单声道：确保是一维数组
+                                audio_array = audio_array.reshape(-1)
+                                # 如果mixer是立体声，需要将单声道转换为立体声
+                                if pygame.mixer.get_init()[2] == 2:
+                                    audio_array = np.column_stack((audio_array, audio_array))
+
+                            sound = sndarray.make_sound(audio_array)
+                            sound.play()
+
+                            while pygame.mixer.get_busy():
+                                time.sleep(0.01)
+                    except Exception as e:
+                        print(f"❌ 播放音频失败: {e}")
+                        import traceback
+                        traceback.print_exc()
+
+                # 启动播放线程
+                play_thread = threading.Thread(target=play_audio)
+                play_thread.start()
+
+                # 从save_queue中获取数据并保存
+                audio_chunks = []
+                while True:
+                    chunk = save_queue.get()
+                    if chunk is None:  # 结束信号
+                        break
+                    audio_chunks.append(chunk)
+
+                # 等待接收线程和播放线程结束
+                receive_thread.join()
+                play_thread.join()
+
+                # 验证文件大小
+                if total_bytes < 1000:
+                    print(f"⚠️ 音频文件过小: {total_bytes} bytes，可能生成失败")
+                    try:
+                        os.unlink(temp_file.name)
+                    except:
+                        pass
+                    return None
+
+                # 合并所有音频块
+                full_audio_data = b''.join(audio_chunks)
+
+                # 流式模式下，API返回的是WAV头+raw PCM数据
+                # 需要重新构建完整的WAV文件
+                try:
+                    import wave
+                    import struct
+
+                    if len(full_audio_data) < 44:
+                        print(f"⚠️ 音频数据过小: {len(full_audio_data)} bytes")
+                        try:
+                            os.unlink(temp_file.name)
+                        except:
+                            pass
+                        return None
+
+                    # 检查是否是有效的WAV头
+                    if full_audio_data[:4] == b'RIFF' and full_audio_data[8:12] == b'WAVE':
+                        print(f"✅ 检测到流式WAV格式，重新构建完整WAV文件")
+
+                        # 解析WAV头，提取音频参数
+                        # WAV头结构:
+                        # 0-3: "RIFF"
+                        # 4-7: 文件大小-8
+                        # 8-11: "WAVE"
+                        # 12-15: "fmt "
+                        # 16-19: fmt chunk大小
+                        # 20-21: 音频格式(1=PCM)
+                        # 22-23: 声道数
+                        # 24-27: 采样率
+                        # 28-31: 字节率
+                        # 32-33: 块对齐
+                        # 34-35: 位深度
+
+                        # 提取音频参数
+                        num_channels = struct.unpack('<H', full_audio_data[22:24])[0]
+                        sample_rate = struct.unpack('<I', full_audio_data[24:28])[0]
+                        sample_width = struct.unpack('<H', full_audio_data[34:36])[0] // 8
+
+                        print(f"🔍 音频参数: 声道={num_channels}, 采样率={sample_rate}Hz, 位深={sample_width*8}bit")
+
+                        # 查找data chunk的位置
+                        data_pos = 36  # fmt chunk之后
+                        while data_pos < len(full_audio_data) - 8:
+                            chunk_id = full_audio_data[data_pos:data_pos+4]
+                            chunk_size = struct.unpack('<I', full_audio_data[data_pos+4:data_pos+8])[0]
+
+                            if chunk_id == b'data':
+                                print(f"✅ 找到data chunk，位置={data_pos}, 大小={chunk_size}")
+                                # 提取PCM数据（跳过data chunk的8字节头）
+                                pcm_data = full_audio_data[data_pos+8:]
+                                print(f"🔍 PCM数据长度: {len(pcm_data)} bytes")
+                                break
+
+                            data_pos += 8 + chunk_size
+
+                        if 'pcm_data' not in locals():
+                            print(f"⚠️ 未找到data chunk，假设所有数据都是PCM")
+                            # 假设从44字节后都是PCM数据
+                            pcm_data = full_audio_data[44:]
+
+                        # 重新构建完整的WAV文件
+                        with wave.open(temp_file.name, 'wb') as wav_file:
+                            wav_file.setnchannels(num_channels)
+                            wav_file.setsampwidth(sample_width)
+                            wav_file.setframerate(sample_rate)
+                            wav_file.writeframes(pcm_data)
+
+                        print(f"✅ WAV文件重新构建完成")
+                    else:
+                        print(f"⚠️ 检测到raw PCM数据，需要构建WAV文件")
+                        # 假设是raw PCM数据，构建WAV文件
+                        # 默认参数：22050Hz, 16位, 单声道
+                        sample_rate = 22050
+                        num_channels = 1
+                        sample_width = 2  # 16-bit = 2 bytes
+
+                        # 计算PCM数据长度
+                        pcm_data = full_audio_data
+                        num_samples = len(pcm_data) // sample_width
+
+                        # 构建WAV文件
+                        with wave.open(temp_file.name, 'wb') as wav_file:
+                            wav_file.setnchannels(num_channels)
+                            wav_file.setsampwidth(sample_width)
+                            wav_file.setframerate(sample_rate)
+                            wav_file.writeframes(pcm_data)
+
+                        print(f"✅ WAV文件构建完成")
+                except Exception as e:
+                    print(f"❌ 处理WAV文件失败: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    try:
+                        os.unlink(temp_file.name)
+                    except:
+                        pass
+                    return None
+
+                # 验证文件大小
+                final_size = os.path.getsize(temp_file.name)
+                print(f"🔍 最终文件大小: {final_size} bytes")
+
+                if final_size < 1000:
+                    print(f"⚠️ 最终文件过小: {final_size} bytes")
+                    try:
+                        os.unlink(temp_file.name)
+                    except:
+                        pass
+                    return None
+
                 print(f"✅ GPT-SoVITS TTS合成成功: {text[:50]}...")
                 return temp_file.name
             else:
@@ -227,20 +526,77 @@ class UnifiedGPTSoVITS:
                     return
 
                 if temp_file_path:
-                    # 播放音频
-                    pygame.mixer.music.load(temp_file_path)
-                    pygame.mixer.music.play()
-
-                    # 等待播放完成
-                    while pygame.mixer.music.get_busy():
-                        time.sleep(0.1)
-
-                    # 删除临时文件
+                    # 验证文件是否存在且大小合理
                     try:
-                        os.unlink(temp_file_path)
-                    except:
-                        pass
-                    print(f"✅ GPT-SoVITS TTS播放成功: {text[:50]}...")
+                        file_size = os.path.getsize(temp_file_path)
+                        print(f"🔍 音频文件大小: {file_size} bytes")
+
+                        if file_size < 1000:
+                            print(f"❌ 音频文件过小: {file_size} bytes，跳过播放")
+                            try:
+                                os.unlink(temp_file_path)
+                            except:
+                                pass
+                            return
+                    except Exception as e:
+                        print(f"❌ 检查音频文件失败: {e}")
+                        try:
+                            os.unlink(temp_file_path)
+                        except:
+                            pass
+                        return
+
+                    # 播放音频
+                    try:
+                        pygame.mixer.music.load(temp_file_path)
+                        pygame.mixer.music.play()
+                        print(f"🔊 开始播放音频")
+
+                        # 等待播放完成
+                        while pygame.mixer.music.get_busy():
+                            time.sleep(0.1)
+
+                        # 删除临时文件
+                        try:
+                            os.unlink(temp_file_path)
+                        except:
+                            pass
+                        print(f"✅ GPT-SoVITS TTS播放成功: {text[:50]}...")
+                    except pygame.error as e:
+                        print(f"❌ 播放音频失败 (pygame错误): {e}")
+                        print(f"   文件路径: {temp_file_path}")
+                        print(f"   文件大小: {os.path.getsize(temp_file_path) if os.path.exists(temp_file_path) else '文件不存在'}")
+                        # 尝试读取文件头进行诊断
+                        try:
+                            with open(temp_file_path, 'rb') as f:
+                                header = f.read(44)
+                                print(f"   文件头: {header[:20]}")
+                                if b'RIFF' in header[:4]:
+                                    print(f"   RIFF标识: 正常")
+                                else:
+                                    print(f"   RIFF标识: 缺失或错误")
+                                if b'WAVE' in header[8:12]:
+                                    print(f"   WAVE标识: 正常")
+                                else:
+                                    print(f"   WAVE标识: 缺失或错误")
+                                if b'data' in header:
+                                    print(f"   data chunk: 正常")
+                                else:
+                                    print(f"   data chunk: 缺失")
+                        except Exception as header_e:
+                            print(f"   读取文件头失败: {header_e}")
+                        try:
+                            os.unlink(temp_file_path)
+                        except:
+                            pass
+                    except Exception as e:
+                        print(f"❌ 播放音频失败 (未知错误): {e}")
+                        import traceback
+                        traceback.print_exc()
+                        try:
+                            os.unlink(temp_file_path)
+                        except:
+                            pass
                 else:
                     print("❌ GPT-SoVITS TTS合成失败")
 

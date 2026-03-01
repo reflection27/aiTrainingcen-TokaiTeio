@@ -89,17 +89,40 @@ class ImprovedMemorySystem:
         session_id: str = "default",
         context_summary: str = ""
     ):
-        """异步保存对话"""
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            self.executor,
-            self.save_conversation,
-            user_input,
-            ai_response,
-            user_id,
-            session_id,
-            context_summary
-        )
+        """异步保存对话（带异常处理和安全检查）"""
+        try:
+            # 安全获取事件循环
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                # 如果没有运行中的事件循环，创建一个新的
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # 检查事件循环是否已关闭
+            if loop.is_closed():
+                print("⚠️ 事件循环已关闭，跳过保存对话")
+                return
+
+            # 在线程池中执行保存操作
+            await loop.run_in_executor(
+                self.executor,
+                self.save_conversation,
+                user_input,
+                ai_response,
+                user_id,
+                session_id,
+                context_summary
+            )
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                print("⚠️ 事件循环已关闭，跳过保存对话")
+            else:
+                print(f"❌ 保存对话失败: {str(e)}")
+        except Exception as e:
+            print(f"❌ 保存对话失败: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
     def save_conversation(
         self,
@@ -123,14 +146,35 @@ class ImprovedMemorySystem:
         session_id: str = "default",
         limit: int = 10
     ) -> List[Dict]:
-        """异步获取最近的对话历史"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self.executor,
-            self.get_recent_history,
-            session_id,
-            limit
-        )
+        """异步获取最近的对话历史（带安全检查）"""
+        try:
+            # 安全获取事件循环
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # 检查事件循环是否已关闭
+            if loop.is_closed():
+                print("⚠️ 事件循环已关闭，返回空历史")
+                return []
+
+            return await loop.run_in_executor(
+                self.executor,
+                self.get_recent_history,
+                session_id,
+                limit
+            )
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                print("⚠️ 事件循环已关闭，返回空历史")
+                return []
+            else:
+                raise
+        except Exception as e:
+            print(f"❌ 获取历史失败: {str(e)}")
+            return []
 
     def get_recent_history(
         self,
@@ -160,14 +204,33 @@ class ImprovedMemorySystem:
         text: str,
         metadata: Optional[Dict] = None
     ):
-        """异步添加知识"""
-        loop = asyncio.get_event_loop()
-        await loop.run_in_executor(
-            self.executor,
-            self.add_knowledge,
-            text,
-            metadata
-        )
+        """异步添加知识（带安全检查）"""
+        try:
+            # 安全获取事件循环
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # 检查事件循环是否已关闭
+            if loop.is_closed():
+                print("⚠️ 事件循环已关闭，跳过添加知识")
+                return
+
+            await loop.run_in_executor(
+                self.executor,
+                self.add_knowledge,
+                text,
+                metadata
+            )
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                print("⚠️ 事件循环已关闭，跳过添加知识")
+            else:
+                raise
+        except Exception as e:
+            print(f"❌ 添加知识失败: {str(e)}")
 
     def add_knowledge(
         self,
@@ -184,14 +247,35 @@ class ImprovedMemorySystem:
         query: str,
         k: int = 5
     ) -> List[str]:
-        """异步搜索相关知识"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self.executor,
-            self.search_knowledge,
-            query,
-            k
-        )
+        """异步搜索相关知识（带安全检查）"""
+        try:
+            # 安全获取事件循环
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # 检查事件循环是否已关闭
+            if loop.is_closed():
+                print("⚠️ 事件循环已关闭，返回空搜索结果")
+                return []
+
+            return await loop.run_in_executor(
+                self.executor,
+                self.search_knowledge,
+                query,
+                k
+            )
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                print("⚠️ 事件循环已关闭，返回空搜索结果")
+                return []
+            else:
+                raise
+        except Exception as e:
+            print(f"❌ 搜索知识失败: {str(e)}")
+            return []
 
     def search_knowledge(
         self,
@@ -240,13 +324,34 @@ class ImprovedMemorySystem:
         }
 
     async def delete_knowledge_async(self, content: str) -> bool:
-        """异步删除知识"""
-        loop = asyncio.get_event_loop()
-        return await loop.run_in_executor(
-            self.executor,
-            self.delete_knowledge,
-            content
-        )
+        """异步删除知识（带安全检查）"""
+        try:
+            # 安全获取事件循环
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+
+            # 检查事件循环是否已关闭
+            if loop.is_closed():
+                print("⚠️ 事件循环已关闭，跳过删除知识")
+                return False
+
+            return await loop.run_in_executor(
+                self.executor,
+                self.delete_knowledge,
+                content
+            )
+        except RuntimeError as e:
+            if "Event loop is closed" in str(e):
+                print("⚠️ 事件循环已关闭，跳过删除知识")
+                return False
+            else:
+                raise
+        except Exception as e:
+            print(f"❌ 删除知识失败: {str(e)}")
+            return False
 
     def delete_knowledge(self, content: str) -> bool:
         """根据内容删除知识"""
