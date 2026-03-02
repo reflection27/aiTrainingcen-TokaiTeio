@@ -251,18 +251,16 @@ class UnifiedGPTSoVITS:
                         import pygame.sndarray as sndarray
 
                         # 初始化pygame mixer（使用实际音频参数）
-                        # 先关闭已初始化的mixer
-                        if pygame.mixer.get_init():
-                            pygame.mixer.quit()
-
-                        # 重新初始化pygame mixer
-                        pygame.mixer.init(
-                            frequency=audio_params['sample_rate'],
-                            size=-16 if audio_params['sample_width'] == 2 else -8,
-                            channels=audio_params['channels'],
-                            buffer=512
-                        )
-                        print(f"✅ Pygame mixer已初始化: {audio_params['sample_rate']}Hz, {audio_params['channels']}声道")
+                        # 检查是否已初始化
+                        if not pygame.mixer.get_init():
+                            # 初始化pygame mixer
+                            pygame.mixer.init(
+                                frequency=audio_params['sample_rate'],
+                                size=-16 if audio_params['sample_width'] == 2 else -8,
+                                channels=audio_params['channels'],
+                                buffer=512
+                            )
+                            print(f"✅ Pygame mixer已初始化: {audio_params['sample_rate']}Hz, {audio_params['channels']}声道")
                         print(f"🔍 Mixer状态: init={pygame.mixer.get_init()}, num_channels={pygame.mixer.get_num_channels()}")
 
                         # 累积PCM数据
@@ -548,6 +546,16 @@ class UnifiedGPTSoVITS:
 
                     # 播放音频
                     try:
+                        # 当使用api_v2时，跳过播放本地文件（因为流式播放已经播放了）
+                        if self.api_type == "api_v2":
+                            print(f"✅ 跳过播放本地文件（api_v2流式播放已播放）")
+                            # 删除临时文件
+                            try:
+                                os.unlink(temp_file_path)
+                            except:
+                                pass
+                            return
+
                         pygame.mixer.music.load(temp_file_path)
                         pygame.mixer.music.play()
                         print(f"🔊 开始播放音频")

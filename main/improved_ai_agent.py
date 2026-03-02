@@ -156,7 +156,7 @@ class ImprovedAIAgent:
         user_id: str = "default",
         session_id: str = "default"
     ) -> str:
-        """异步处理用户命令（优化版 - 支持快速响应模式）"""
+        """异步处理用户命令（优化版 - 默认启用流式响应以减少首字延迟）"""
         # 检查缓存
         cache_key = f"{session_id}:{user_input}"
         if cache_key in self.response_cache:
@@ -175,16 +175,26 @@ class ImprovedAIAgent:
         # 创建新任务
         async def _process():
             try:
-                # 并行获取上下文
-                context_task = self.memory.get_context_async(session_id, user_input)
-                context = await context_task
+                # 并行获取上下文和构建基础prompt
+                context_task = asyncio.create_task(self.memory.get_context_async(session_id, user_input))
 
-                # 构建prompt（根据是否快速模式）
-                full_prompt = self._build_prompt(user_input, context, fast_mode=fast_mode)
+                # 构建基础prompt（不等待上下文）
+                base_prompt = f"你是{self.name}，{self.role}。\n当前对话:\n用户: {user_input}\n助手:"
 
-                # 调用AI（快速模式使用流式响应）
-                stream = fast_mode  # 快速模式启用流式响应
-                response = await self._call_ai_async(full_prompt, stream=stream)
+                # 等待上下文获取完成（设置较短的超时时间）
+                try:
+                    context = await asyncio.wait_for(context_task, timeout=1.0)  # 1秒超时
+                    # 如果上下文获取成功，构建完整prompt
+                    if context and (context.get("history") or context.get("knowledge")):
+                        full_prompt = self._build_prompt(user_input, context, fast_mode=fast_mode)
+                        # 调用AI（使用完整prompt）
+                        response = await self._call_ai_async(full_prompt, stream=True, fast_mode=fast_mode)
+                    else:
+                        # 上下文为空，使用基础prompt
+                        response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode)
+                except asyncio.TimeoutError:
+                    # 上下文获取超时，使用基础prompt
+                    response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode)
 
                 # 保存对话（异步，不阻塞响应）
                 # 创建后台任务并添加到追踪集合，防止被垃圾回收
@@ -283,17 +293,20 @@ class ImprovedAIAgent:
 
         return "\n".join(prompt_parts)
 
-    async def _call_ai_async(self, prompt: str, stream: bool = False) -> str:
-        """异步调用AI（优化版 - 支持流式响应）"""
+    async def _call_ai_async(self, prompt: str, stream: bool = True, fast_mode: bool = False) -> str:
+        """异步调用AI（优化版 - 默认使用流式响应以减少首字延迟）"""
         try:
             model = self.config.get("selected_model", "deepseek-chat")
 
             # 添加超时控制
             import asyncio
             try:
-                # 判断是否使用流式响应
+                # 判断是否使用流式响应（默认启用）
                 if stream:
                     # 流式响应模式 - 更快开始响应
+                    # 减少max_tokens以加快首字响应
+                    max_tokens = 512 if fast_mode else 1024
+
                     response = await asyncio.wait_for(
                         self.client.chat.completions.create(
                             model=model,
@@ -301,21 +314,28 @@ class ImprovedAIAgent:
                                 {"role": "system", "content": self._get_system_prompt()},
                                 {"role": "user", "content": prompt}
                             ],
-                            max_tokens=1024,  # 减少token数量以加快响应
+                            max_tokens=max_tokens,  # 减少token数量以加快响应
                             temperature=0.7,
                             stream=True
                         ),
-                        timeout=10.0  # 流式模式10秒超时
+                        timeout=5.0  # 流式模式5秒超时，减少首字延迟
                     )
 
                     # 收集流式响应
                     full_response = ""
+                    first_chunk_received = False
+
                     async for chunk in response:
                         if chunk.choices[0].delta.content:
+                            if not first_chunk_received:
+                                # 记录首字接收时间
+                                first_chunk_received = True
+                                print(f"⚡ 首字已接收")
                             full_response += chunk.choices[0].delta.content
+
                     return full_response.strip()
                 else:
-                    # 非流式响应模式
+                    # 非流式响应模式（保留以兼容）
                     response = await asyncio.wait_for(
                         self.client.chat.completions.create(
                             model=model,
@@ -323,10 +343,10 @@ class ImprovedAIAgent:
                                 {"role": "system", "content": self._get_system_prompt()},
                                 {"role": "user", "content": prompt}
                             ],
-                            max_tokens=1024,  # 减少token数量以加快响应
+                            max_tokens=1024,
                             temperature=0.7
                         ),
-                        timeout=10.0  # 10秒超时
+                        timeout=10.0
                     )
                     return response.choices[0].message.content.strip()
             except asyncio.TimeoutError:
