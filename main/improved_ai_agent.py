@@ -157,6 +157,14 @@ class ImprovedAIAgent:
         session_id: str = "default"
     ) -> str:
         """异步处理用户命令（优化版 - 默认启用流式响应以减少首字延迟）"""
+        # 获取当前事件循环
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            # 如果没有运行中的事件循环，创建一个新的
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
         # 检查缓存
         cache_key = f"{session_id}:{user_input}"
         if cache_key in self.response_cache:
@@ -166,96 +174,139 @@ class ImprovedAIAgent:
 
         # 检查是否有正在处理的相同请求
         if cache_key in self.pending_requests:
+            # 检查任务是否仍然有效（属于当前事件循环）
+            task = self.pending_requests[cache_key]
+            try:
+                # 尝试获取任务的事件循环
+                task_loop = task.get_loop()
+                # 如果任务的事件循环与当前循环不同，则重新创建任务
+                if task_loop != loop:
+                    # 取消旧任务
+                    if not task.done():
+                        task.cancel()
+                    # 重新创建任务
+                    async def _process():
+                        return await self._process_request(user_input, user_id, session_id, cache_key)
+                    task = loop.create_task(_process())
+                    self.pending_requests[cache_key] = task
+            except Exception:
+                # 如果获取任务循环失败，重新创建任务
+                async def _process():
+                    return await self._process_request(user_input, user_id, session_id, cache_key)
+                task = loop.create_task(_process())
+                self.pending_requests[cache_key] = task
+
             # 等待正在处理的请求完成
-            return await self.pending_requests[cache_key]
+            return await task
 
         # 判断是否使用快速模式（简单问题）
         fast_mode = self._is_simple_query(user_input)
 
-        # 创建新任务
+        # 创建新任务并使用当前事件循环
         async def _process():
-            try:
-                # 并行获取上下文和构建基础prompt
-                context_task = asyncio.create_task(self.memory.get_context_async(session_id, user_input))
+            return await self._process_request(user_input, user_id, session_id, cache_key, fast_mode)
 
-                # 构建基础prompt（不等待上下文）
-                base_prompt = f"你是{self.name}，{self.role}。\n当前对话:\n用户: {user_input}\n助手:"
-
-                # 等待上下文获取完成（设置较短的超时时间）
-                try:
-                    context = await asyncio.wait_for(context_task, timeout=1.0)  # 1秒超时
-                    # 如果上下文获取成功，构建完整prompt
-                    if context and (context.get("history") or context.get("knowledge")):
-                        full_prompt = self._build_prompt(user_input, context, fast_mode=fast_mode)
-                        # 调用AI（使用完整prompt）
-                        response = await self._call_ai_async(full_prompt, stream=True, fast_mode=fast_mode)
-                    else:
-                        # 上下文为空，使用基础prompt
-                        response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode)
-                except asyncio.TimeoutError:
-                    # 上下文获取超时，使用基础prompt
-                    response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode)
-
-                # 保存对话（异步，不阻塞响应）
-                # 创建后台任务并添加到追踪集合，防止被垃圾回收
-                save_task = asyncio.create_task(
-                    self.memory.save_conversation_async(
-                        user_input,
-                        response,
-                        user_id,
-                        session_id
-                    )
-                )
-                # 添加到后台任务集合
-                self.background_tasks.add(save_task)
-                # 添加完成回调，自动清理任务（带异常处理和事件循环检查）
-                def _cleanup_task(task):
-                    try:
-                        # 检查事件循环是否仍然可用
-                        try:
-                            import asyncio
-                            loop = asyncio.get_running_loop()
-                            if loop.is_closed():
-                                return  # 事件循环已关闭，跳过清理
-                        except RuntimeError:
-                            return  # 没有运行中的事件循环，跳过清理
-
-                        # 安全地清理任务
-                        self.background_tasks.discard(task)
-
-                        # 检查任务是否有异常
-                        try:
-                            exception = task.exception()
-                            if exception:
-                                print(f"⚠️ 后台任务异常: {exception}")
-                        except Exception:
-                            pass  # 忽略获取异常时的错误
-                    except Exception as e:
-                        # 忽略清理过程中的所有错误
-                        pass
-                save_task.add_done_callback(_cleanup_task)
-
-                # 缓存响应（带大小限制）
-                if len(self.response_cache) >= self.max_cache_size:
-                    # 删除最少使用的缓存项
-                    lru_key = min(self.cache_access_count, key=self.cache_access_count.get)
-                    del self.response_cache[lru_key]
-                    del self.cache_access_count[lru_key]
-
-                self.response_cache[cache_key] = response
-                self.cache_access_count[cache_key] = 1
-
-                return response
-            finally:
-                # 清除待处理请求标记
-                if cache_key in self.pending_requests:
-                    del self.pending_requests[cache_key]
-
-        # 创建并存储任务
-        task = asyncio.create_task(_process())
+        task = loop.create_task(_process())
         self.pending_requests[cache_key] = task
 
         return await task
+
+    async def _process_request(
+        self,
+        user_input: str,
+        user_id: str,
+        session_id: str,
+        cache_key: str,
+        fast_mode: bool = None
+    ) -> str:
+        """处理请求的核心逻辑"""
+        # 获取当前事件循环
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+
+        # 如果fast_mode未指定，则判断是否使用快速模式
+        if fast_mode is None:
+            fast_mode = self._is_simple_query(user_input)
+
+        try:
+            # 并行获取上下文和构建基础prompt
+            context_task = loop.create_task(self.memory.get_context_async(session_id, user_input))
+
+            # 构建基础prompt（不等待上下文）
+            base_prompt = f"你是{self.name}，{self.role}。\n当前对话:\n用户: {user_input}\n助手:"
+
+            # 等待上下文获取完成（设置较短的超时时间）
+            try:
+                context = await asyncio.wait_for(context_task, timeout=1.0)  # 1秒超时
+                # 如果上下文获取成功，构建完整prompt
+                if context and (context.get("history") or context.get("knowledge")):
+                    full_prompt = self._build_prompt(user_input, context, fast_mode=fast_mode)
+                    # 调用AI（使用完整prompt）
+                    response = await self._call_ai_async(full_prompt, stream=True, fast_mode=fast_mode)
+                else:
+                    # 上下文为空，使用基础prompt
+                    response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode)
+            except asyncio.TimeoutError:
+                # 上下文获取超时，使用基础prompt
+                response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode)
+
+            # 保存对话（异步，不阻塞响应）
+            # 创建后台任务并添加到追踪集合，防止被垃圾回收
+            save_task = loop.create_task(
+                self.memory.save_conversation_async(
+                    user_input,
+                    response,
+                    user_id,
+                    session_id
+                )
+            )
+            # 添加到后台任务集合
+            self.background_tasks.add(save_task)
+            # 添加完成回调，自动清理任务（带异常处理和事件循环检查）
+            def _cleanup_task(task):
+                try:
+                    # 检查事件循环是否仍然可用
+                    try:
+                        import asyncio
+                        loop = asyncio.get_running_loop()
+                        if loop.is_closed():
+                            return  # 事件循环已关闭，跳过清理
+                    except RuntimeError:
+                        return  # 没有运行中的事件循环，跳过清理
+
+                    # 安全地清理任务
+                    self.background_tasks.discard(task)
+
+                    # 检查任务是否有异常
+                    try:
+                        exception = task.exception()
+                        if exception:
+                            print(f"⚠️ 后台任务异常: {exception}")
+                    except Exception:
+                        pass  # 忽略获取异常时的错误
+                except Exception as e:
+                    # 忽略清理过程中的所有错误
+                    pass
+            save_task.add_done_callback(_cleanup_task)
+
+            # 缓存响应（带大小限制）
+            if len(self.response_cache) >= self.max_cache_size:
+                # 删除最少使用的缓存项
+                lru_key = min(self.cache_access_count, key=self.cache_access_count.get)
+                del self.response_cache[lru_key]
+                del self.cache_access_count[lru_key]
+
+            self.response_cache[cache_key] = response
+            self.cache_access_count[cache_key] = 1
+
+            return response
+        finally:
+            # 清除待处理请求标记
+            if cache_key in self.pending_requests:
+                del self.pending_requests[cache_key]
 
     def _build_prompt(self, user_input: str, context: Dict, fast_mode: bool = False) -> str:
         """构建完整的prompt（优化版 - 支持快速模式）"""
