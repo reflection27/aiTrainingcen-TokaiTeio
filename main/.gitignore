@@ -1,0 +1,51 @@
+# 只跟踪main文件夹内的内容
+/*
+!main/
+
+# Python虚拟环境
+venv/
+env/
+ENV/
+.venv/
+
+# 记忆系统数据库文件
+memory_lake.db
+memory_lake.json
+
+# 聊天日志
+chat_logs/
+
+# 数据目录
+data/
+
+# 恢复文件
+recovered_files/
+
+# 临时文件
+temp_*.py
+temp_*.txt
+*.backup
+
+# Python缓存
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# IDE配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 系统文件
+.DS_Store
+Thumbs.db
+
+# 日志文件
+*.log
+
+# 插件和预训练模型
+main/plugins/x/
