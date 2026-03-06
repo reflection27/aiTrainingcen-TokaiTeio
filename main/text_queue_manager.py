@@ -44,6 +44,34 @@ class TextQueueManager(QObject):
                 print(f"🔍 最后一个字符: {text[-1]}")
                 print(f"🔍 最后一个字符的Unicode编码: {ord(text[-1])}")
             
+            # 优先处理反括号，无论是否在括号内
+            if text and ('）' in text or ')' in text):
+                for char in text:
+                    if char in '）)':
+                        if self.in_brackets:
+                            self.bracket_depth -= 1
+                            print(f"🔍 检测到反括号: {char}, 深度: {self.bracket_depth}")
+                            if self.bracket_depth == 0:
+                                self.in_brackets = False
+                                print(f"✅ 括号对匹配，删除括号及其内容")
+                                # 删除缓冲区中的括号及其内容
+                                # 找到第一个正括号的位置
+                                start_pos = self.buffer.rfind('（')
+                                if start_pos == -1:
+                                    start_pos = self.buffer.rfind('(')
+                                if start_pos != -1:
+                                    self.buffer = self.buffer[:start_pos]
+                                    print(f"📝 删除括号及其内容后，缓冲区: {self.buffer}")
+                                # 从文本中移除反括号，避免它被添加到缓冲区
+                                text = text.replace(char, '', 1)
+                                print(f"📝 从文本中移除反括号: {text}")
+                                break
+                        else:
+                            # 如果不在括号内但检测到反括号，直接忽略
+                            text = text.replace(char, '', 1)
+                            print(f"📝 忽略未匹配的反括号: {char}")
+                            break
+
             # 检查文本中是否包含标点符号
             # 这是为了避免当标点符号和括号同时出现时，标点符号滞留在缓冲区中
             if text and not self.in_brackets:
@@ -75,30 +103,8 @@ class TextQueueManager(QObject):
                         # 只处理第一个标点符号，然后跳出循环
                         break
 
-            # 检查文本中是否包含括号
+            # 检查文本中是否包含正括号
             if text:
-
-                # 再检查文本中是否包含反括号
-                for char in text:
-                    if char in '）)':
-                        if self.in_brackets:
-                            self.bracket_depth -= 1
-                            print(f"🔍 检测到反括号: {char}, 深度: {self.bracket_depth}")
-                            if self.bracket_depth == 0:
-                                self.in_brackets = False
-                                print(f"✅ 括号对匹配，删除括号及其内容")
-                                # 删除缓冲区中的括号及其内容
-                                # 找到第一个正括号的位置
-                                start_pos = self.buffer.rfind('（')
-                                if start_pos == -1:
-                                    start_pos = self.buffer.rfind('(')
-                                if start_pos != -1:
-                                    self.buffer = self.buffer[:start_pos]
-                                    print(f"📝 删除括号及其内容后，缓冲区: {self.buffer}")
-                                # 从文本中移除反括号，避免它被添加到缓冲区
-                                text = text.replace(char, '', 1)
-                                print(f"📝 从文本中移除反括号: {text}")
-                # 再检查文本中是否包含正括号
                 for char in text:
                     if char in '（(':
                         if not self.in_brackets:
@@ -131,20 +137,10 @@ class TextQueueManager(QObject):
             # 如果在括号内，不处理标点符号
             if self.in_brackets:
                 print(f"⏳ 在括号内，不处理标点符号")
-                # 检查文本中是否包含反括号
-                if '）' in text or ')' in text:
-                    # 如果包含反括号，只添加反括号之前的内容到缓冲区
-                    punct_pos = text.find('）') if '）' in text else text.find(')')
-                    text_before_punct = text[:punct_pos]
-                    self.buffer += text_before_punct
-                    print(f"📝 添加流式文本到缓冲区（反括号前）: {text_before_punct[:50]}...")
-                    print(f"📝 当前缓冲区内容: {self.buffer[:100]}...")
-                    # 反括号会在后续的括号处理逻辑中被处理
-                else:
-                    # 将新文本添加到缓冲区
-                    self.buffer += text
-                    print(f"📝 添加流式文本到缓冲区: {text[:50]}...")
-                    print(f"📝 当前缓冲区内容: {self.buffer[:100]}...")
+                # 将新文本添加到缓冲区（反括号已经在前面处理过了）
+                self.buffer += text
+                print(f"📝 添加流式文本到缓冲区: {text[:50]}...")
+                print(f"📝 当前缓冲区内容: {self.buffer[:100]}...")
                 return
             
             # 检查文本是否以标点符号结尾
