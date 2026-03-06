@@ -801,8 +801,15 @@ class AIAgentApp(QMainWindow):
         try:
             print(f"🔄 开始处理AI响应: {user_input}")
 
-            # 使用异步处理
-            response = await self.agent.process_command_async(user_input)
+            # 创建流式文本回调函数
+            def stream_callback(chunk):
+                """流式文本回调函数"""
+                print(f"📝 收到流式文本块: {chunk}")
+                # 发送信号到主线程，更新UI（添加特殊标记）
+                self.response_ready.emit("STREAM_CHUNK:" + chunk)
+
+            # 使用异步处理，传入流式回调函数
+            response = await self.agent.process_command_async(user_input, stream_callback=stream_callback)
 
             print(f"✅ AI响应获取成功: {response[:50]}...")
 
@@ -810,9 +817,9 @@ class AIAgentApp(QMainWindow):
             if not response or response.strip() == "":
                 response = "抱歉，我没有理解您的意思，请重新表述一下。"
 
-            # 发送信号到主线程
-            print(f"📡 发送信号: {response[:50]}...")
-            self.response_ready.emit(response)
+            # 发送完成信号到主线程（不包含响应内容，因为已经通过流式回调显示）
+            print(f"📡 发送完成信号")
+            self.response_ready.emit("STREAM_COMPLETE")
 
         except Exception as e:
             # 如果出现异常，也要更新UI
@@ -881,6 +888,56 @@ class AIAgentApp(QMainWindow):
     def update_ui_with_response(self, response):
         """在主线程中更新UI"""
         print(f"🔄 开始更新UI: {response[:50]}...")
+
+        # 检查是否是流式文本块（以特殊标记开头）
+        if response.startswith("STREAM_CHUNK:"):
+            # 提取流式文本块内容
+            chunk = response[len("STREAM_CHUNK:"):]
+            print(f"📝 处理流式文本块: {chunk}")
+            
+            # 检查是否是第一条流式文本
+            if not hasattr(self, '_current_streaming_response'):
+                self._current_streaming_response = ""
+                # 添加初始消息到聊天历史
+                timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+                formatted_msg = f"[{timestamp}] 东海帝王: "
+                self.chat_history.setPlainText(self.chat_history.toPlainText() + formatted_msg)
+            
+            # 追加流式文本到当前消息
+            self._current_streaming_response += chunk
+            current_text = self.chat_history.toPlainText()
+            self.chat_history.setPlainText(current_text + chunk)
+            
+            # 滚动到底部
+            self.chat_history.verticalScrollBar().setValue(
+                self.chat_history.verticalScrollBar().maximum()
+            )
+            return
+            
+        # 检查是否是流式完成信号
+        if response == "STREAM_COMPLETE":
+            print(f"✅ 流式回复完成")
+            
+            # 添加回车到流式回复末尾
+            if hasattr(self, '_current_streaming_response'):
+                current_text = self.chat_history.toPlainText()
+                self.chat_history.setPlainText(current_text + "\n")
+                # 清除流式回复状态
+                delattr(self, '_current_streaming_response')
+            
+            # 停止所有定时器
+            if hasattr(self, 'progress_timer'):
+                self.progress_timer.stop()
+            if hasattr(self, 'timeout_timer'):
+                self.timeout_timer.stop()
+
+            # 立即完成进度条
+            self.progress_bar.setValue(100)
+            self.progress_bar.setFormat("完成")
+
+            # 延迟隐藏进度条
+            QTimer.singleShot(800, lambda: self.progress_bar.setVisible(False))
+            return
         
         # 停止所有定时器
         if hasattr(self, 'progress_timer'):
@@ -896,8 +953,8 @@ class AIAgentApp(QMainWindow):
         print(f"📝 添加消息到聊天历史: 东海帝王 - {response[:50]}...")
         self.add_message("东海帝王", response)
 
-        # 播放TTS
-        self._play_tts(response)
+        # 播放TTS - 已注释，避免与text_queue_manager重复调用
+        # self._play_tts(response)
         
         # 延迟隐藏进度条
         QTimer.singleShot(800, lambda: self.progress_bar.setVisible(False))

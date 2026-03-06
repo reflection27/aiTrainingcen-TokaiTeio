@@ -44,6 +44,10 @@ class ImprovedAIAgent:
         self.tts_engine = None
         self._init_tts_manager(config)
 
+        # 初始化文本队列管理器
+        self.text_queue_manager = None
+        self._init_text_queue_manager()
+
         # ASR功能已移至asr_integration模块
         self.asr_manager = None
         self.asr_enabled = False
@@ -70,8 +74,10 @@ class ImprovedAIAgent:
 
     def _init_tts_manager(self, config: Dict):
         """初始化TTS管理器"""
+        print(f"🔍 开始初始化TTS管理器")
         try:
             tts_engine = config.get("tts_engine", "azure")  # 默认使用Azure TTS
+            print(f"🔍 TTS引擎类型: {tts_engine}")
             if tts_engine == "gpt_sovits":
                 # 使用GPT-SoVITS TTS
                 gpt_sovits_api_url = config.get("gpt_sovits_api_url", "http://127.0.0.1:9880")
@@ -111,6 +117,18 @@ class ImprovedAIAgent:
             print(f"⚠️ TTS管理器初始化失败: {str(e)}")
             self.tts_manager = None
             self.tts_engine = None
+
+    def _init_text_queue_manager(self):
+        """初始化文本队列管理器"""
+        try:
+            from text_queue_manager import TextQueueManager
+            print(f"🔍 初始化文本队列管理器，tts_manager={self.tts_manager is not None}")
+            self.text_queue_manager = TextQueueManager(tts_manager=self.tts_manager)
+            self.text_queue_manager.start_processing()
+            print("✅ 文本队列管理器初始化并启动成功")
+        except Exception as e:
+            print(f"⚠️ 文本队列管理器初始化失败: {str(e)}")
+            self.text_queue_manager = None
 
     def _register_default_tools(self):
         """注册默认工具"""
@@ -154,9 +172,17 @@ class ImprovedAIAgent:
         self,
         user_input: str,
         user_id: str = "default",
-        session_id: str = "default"
+        session_id: str = "default",
+        stream_callback=None
     ) -> str:
-        """异步处理用户命令（优化版 - 默认启用流式响应以减少首字延迟）"""
+        """异步处理用户命令（优化版 - 默认启用流式响应以减少首字延迟）
+
+        参数:
+            user_input: 用户输入
+            user_id: 用户ID
+            session_id: 会话ID
+            stream_callback: 流式文本回调函数，接收每个文本块
+        """
         # 获取当前事件循环
         try:
             loop = asyncio.get_running_loop()
@@ -204,7 +230,7 @@ class ImprovedAIAgent:
 
         # 创建新任务并使用当前事件循环
         async def _process():
-            return await self._process_request(user_input, user_id, session_id, cache_key, fast_mode)
+            return await self._process_request(user_input, user_id, session_id, cache_key, fast_mode, stream_callback)
 
         task = loop.create_task(_process())
         self.pending_requests[cache_key] = task
@@ -217,9 +243,19 @@ class ImprovedAIAgent:
         user_id: str,
         session_id: str,
         cache_key: str,
-        fast_mode: bool = None
+        fast_mode: bool = None,
+        stream_callback=None
     ) -> str:
-        """处理请求的核心逻辑"""
+        """处理请求的核心逻辑
+
+        参数:
+            user_input: 用户输入
+            user_id: 用户ID
+            session_id: 会话ID
+            cache_key: 缓存键
+            fast_mode: 是否使用快速模式
+            stream_callback: 流式文本回调函数，接收每个文本块
+        """
         # 获取当前事件循环
         try:
             loop = asyncio.get_running_loop()
@@ -245,10 +281,10 @@ class ImprovedAIAgent:
                 if context and (context.get("history") or context.get("knowledge")):
                     full_prompt = self._build_prompt(user_input, context, fast_mode=fast_mode)
                     # 调用AI（使用完整prompt）
-                    response = await self._call_ai_async(full_prompt, stream=True, fast_mode=fast_mode)
+                    response = await self._call_ai_async(full_prompt, stream=True, fast_mode=fast_mode, stream_callback=stream_callback)
                 else:
                     # 上下文为空，使用基础prompt
-                    response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode)
+                    response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode, stream_callback=stream_callback)
             except asyncio.TimeoutError:
                 # 上下文获取超时，使用基础prompt
                 response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode)
@@ -344,8 +380,15 @@ class ImprovedAIAgent:
 
         return "\n".join(prompt_parts)
 
-    async def _call_ai_async(self, prompt: str, stream: bool = True, fast_mode: bool = False) -> str:
-        """异步调用AI（优化版 - 默认使用流式响应以减少首字延迟）"""
+    async def _call_ai_async(self, prompt: str, stream: bool = True, fast_mode: bool = False, stream_callback=None) -> str:
+        """异步调用AI（优化版 - 默认使用流式响应以减少首字延迟）
+
+        参数:
+            prompt: 提示词
+            stream: 是否使用流式响应
+            fast_mode: 是否使用快速模式
+            stream_callback: 流式文本回调函数，接收每个文本块
+        """
         try:
             model = self.config.get("selected_model", "deepseek-chat")
 
@@ -382,7 +425,37 @@ class ImprovedAIAgent:
                                 # 记录首字接收时间
                                 first_chunk_received = True
                                 print(f"⚡ 首字已接收")
-                            full_response += chunk.choices[0].delta.content
+                            chunk_content = chunk.choices[0].delta.content
+                            full_response += chunk_content
+
+                            # 调用流式回调函数（如果提供）
+                            if stream_callback:
+                                stream_callback(chunk_content)
+
+                            # 如果有文本队列管理器，将流式文本添加到队列
+                            if hasattr(self, 'text_queue_manager') and self.text_queue_manager:
+                                # 将文本块添加到队列，不进行切分
+                                # 标点符号会触发发送缓冲区中的所有文本
+                                print(f"🔍 接收到的文本块: {chunk_content}")
+                                if chunk_content:
+                                    print(f"🔍 最后一个字符: {chunk_content[-1]}")
+                                    print(f"🔍 最后一个字符的Unicode编码: {ord(chunk_content[-1])}")
+                                # 检查文本块是否以标点符号结尾
+                                # 支持中文标点：，。！？、；："''【】
+                                # 支持英文标点：,.!?:;"''[]
+                                # 注意：不检查括号（）和()，因为它们通常表示动作描述
+                                if chunk_content and chunk_content[-1] in '，。！？、；："''【】,.!?:;"\'\'[]':
+                                    print(f"🔍 检测到标点符号结尾: {chunk_content[-1]}")
+                                    # 确保标点符号与前面的文本一起发送到TTS
+                                    # 不对chunk_content进行任何截断或修改
+                                    self.text_queue_manager.add_streaming_text(chunk_content)
+                                else:
+                                    # 将文本块添加到队列，不会触发发送缓冲区中的所有文本
+                                    self.text_queue_manager.add_streaming_text(chunk_content)
+
+                    # 如果有文本队列管理器，完成文本输入
+                    if hasattr(self, 'text_queue_manager') and self.text_queue_manager:
+                        self.text_queue_manager.finalize_text()
 
                     return full_response.strip()
                 else:
