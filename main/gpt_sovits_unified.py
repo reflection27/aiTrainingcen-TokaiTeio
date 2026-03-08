@@ -465,6 +465,12 @@ class UnifiedGPTSoVITS:
             print(f"🔍 TTS未启用或管理器不可用: enabled={self.enabled}, audio_available={self.audio_available}")
             return
 
+        # 在开始合成时就分配顺序号
+        with self.synthesis_counter_lock:
+            synthesis_order = self.synthesis_counter
+            self.synthesis_counter += 1
+        print(f"📝 分配音频序号: {synthesis_order}, 文本: {text[:50]}...")
+
         # 在新线程中处理TTS
         def tts_worker():
             try:
@@ -479,6 +485,24 @@ class UnifiedGPTSoVITS:
                 else:
                     print(f"❌ 不支持的API类型: {self.api_type}")
                     self.is_playing = False
+                    # 等待前一个序号的音频放入队列或已播放
+                    with self.play_order_condition:
+                        expected_order = self.last_played_order + 1
+                        while synthesis_order != expected_order:
+                            # 如果前一个序号的音频已经放入队列或已播放,则允许当前音频标记为已播放
+                            if (expected_order in self.played_orders) or (expected_order in self.pending_orders):
+                                break
+                            # 否则等待
+                            print(f"⏳ API类型不支持等待音频序号 {expected_order} 完成, 当前序号: {synthesis_order}")
+                            self.play_order_condition.wait(timeout=0.1)
+                            if self.stop_playback_flag:
+                                break
+
+                        # 更新播放顺序状态，标记为已播放并更新last_played_order
+                        self.played_orders.add(synthesis_order)
+                        self.last_played_order = synthesis_order
+                        print(f"📝 音频序号 {synthesis_order} API类型不支持，已标记为已播放，更新last_played_order为{synthesis_order}")
+                        self.play_order_condition.notify_all()
                     return
 
                 if temp_file_path:
@@ -493,14 +517,23 @@ class UnifiedGPTSoVITS:
                                 os.unlink(temp_file_path)
                             except:
                                 pass
-                            # 更新播放顺序状态，标记为已播放
-                            with self.synthesis_counter_lock:
-                                failed_order = self.synthesis_counter
-                                self.synthesis_counter += 1
+                            # 等待前一个序号的音频放入队列或已播放
                             with self.play_order_condition:
-                                self.played_orders.add(failed_order)
-                                self.last_played_order = failed_order
-                                print(f"📝 音频序号 {failed_order} 文件过小，已标记为已播放")
+                                expected_order = self.last_played_order + 1
+                                while synthesis_order != expected_order:
+                                    # 如果前一个序号的音频已经放入队列或已播放,则允许当前音频标记为已播放
+                                    if (expected_order in self.played_orders) or (expected_order in self.pending_orders):
+                                        break
+                                    # 否则等待
+                                    print(f"⏳ 文件过小等待音频序号 {expected_order} 完成, 当前序号: {synthesis_order}")
+                                    self.play_order_condition.wait(timeout=0.1)
+                                    if self.stop_playback_flag:
+                                        break
+
+                                # 更新播放顺序状态，标记为已播放并更新last_played_order
+                                self.played_orders.add(synthesis_order)
+                                self.last_played_order = synthesis_order
+                                print(f"📝 音频序号 {synthesis_order} 文件过小，已标记为已播放，更新last_played_order为{synthesis_order}")
                                 self.play_order_condition.notify_all()
                             self.is_playing = False
                             return
@@ -510,14 +543,23 @@ class UnifiedGPTSoVITS:
                             os.unlink(temp_file_path)
                         except:
                             pass
-                        # 更新播放顺序状态，标记为已播放
-                        with self.synthesis_counter_lock:
-                            failed_order = self.synthesis_counter
-                            self.synthesis_counter += 1
+                        # 等待前一个序号的音频放入队列或已播放
                         with self.play_order_condition:
-                            self.played_orders.add(failed_order)
-                            self.last_played_order = failed_order
-                            print(f"📝 音频序号 {failed_order} 检查失败，已标记为已播放")
+                            expected_order = self.last_played_order + 1
+                            while synthesis_order != expected_order:
+                                # 如果前一个序号的音频已经放入队列或已播放,则允许当前音频标记为已播放
+                                if (expected_order in self.played_orders) or (expected_order in self.pending_orders):
+                                    break
+                                # 否则等待
+                                print(f"⏳ 检查失败等待音频序号 {expected_order} 完成, 当前序号: {synthesis_order}")
+                                self.play_order_condition.wait(timeout=0.1)
+                                if self.stop_playback_flag:
+                                    break
+
+                            # 更新播放顺序状态，标记为已播放并更新last_played_order
+                            self.played_orders.add(synthesis_order)
+                            self.last_played_order = synthesis_order
+                            print(f"📝 音频序号 {synthesis_order} 检查失败，已标记为已播放，更新last_played_order为{synthesis_order}")
                             self.play_order_condition.notify_all()
                         self.is_playing = False
                         return
@@ -525,10 +567,6 @@ class UnifiedGPTSoVITS:
                     # 将音频文件放入全局播放队列
                     try:
                         print(f"✅ 将音频文件放入全局播放队列: {temp_file_path}")
-                        # 获取合成顺序标记
-                        with self.synthesis_counter_lock:
-                            synthesis_order = self.synthesis_counter
-                            self.synthesis_counter += 1
 
                         # 播放顺序检查机制
                         with self.play_order_condition:
@@ -559,26 +597,47 @@ class UnifiedGPTSoVITS:
                             os.unlink(temp_file_path)
                         except:
                             pass
-                        # 更新播放顺序状态，标记为已播放
+                        # 等待前一个序号的音频放入队列或已播放
                         with self.play_order_condition:
+                            expected_order = self.last_played_order + 1
+                            while synthesis_order != expected_order:
+                                # 如果前一个序号的音频已经放入队列或已播放,则允许当前音频标记为已播放
+                                if (expected_order in self.played_orders) or (expected_order in self.pending_orders):
+                                    break
+                                # 否则等待
+                                print(f"⏳ 放入队列失败等待音频序号 {expected_order} 完成, 当前序号: {synthesis_order}")
+                                self.play_order_condition.wait(timeout=0.1)
+                                if self.stop_playback_flag:
+                                    break
+
+                            # 更新播放顺序状态，标记为已播放并更新last_played_order
                             self.played_orders.add(synthesis_order)
                             self.pending_orders.discard(synthesis_order)
                             self.last_played_order = synthesis_order
-                            print(f"📝 音频序号 {synthesis_order} 放入队列失败，已标记为已播放")
+                            print(f"📝 音频序号 {synthesis_order} 放入队列失败，已标记为已播放，更新last_played_order为{synthesis_order}")
                             self.play_order_condition.notify_all()
                         # 设置播放状态为False
                         self.is_playing = False
                         return
                 else:
                     print("❌ GPT-SoVITS TTS合成失败")
-                    # 更新播放顺序状态，标记为已播放
-                    with self.synthesis_counter_lock:
-                        failed_order = self.synthesis_counter
-                        self.synthesis_counter += 1
+                    # 等待前一个序号的音频放入队列或已播放
                     with self.play_order_condition:
-                        self.played_orders.add(failed_order)
-                        self.last_played_order = failed_order
-                        print(f"📝 音频序号 {failed_order} 合成失败，已标记为已播放")
+                        expected_order = self.last_played_order + 1
+                        while synthesis_order != expected_order:
+                            # 如果前一个序号的音频已经放入队列或已播放,则允许当前音频标记为已播放
+                            if (expected_order in self.played_orders) or (expected_order in self.pending_orders):
+                                break
+                            # 否则等待
+                            print(f"⏳ 合成失败等待音频序号 {expected_order} 完成, 当前序号: {synthesis_order}")
+                            self.play_order_condition.wait(timeout=0.1)
+                            if self.stop_playback_flag:
+                                break
+
+                        # 更新播放顺序状态，标记为已播放并更新last_played_order
+                        self.played_orders.add(synthesis_order)
+                        self.last_played_order = synthesis_order
+                        print(f"📝 音频序号 {synthesis_order} 合成失败，已标记为已播放，更新last_played_order为{synthesis_order}")
                         self.play_order_condition.notify_all()
                     # 设置播放状态为False
                     self.is_playing = False
@@ -587,14 +646,23 @@ class UnifiedGPTSoVITS:
                 print(f"❌ GPT-SoVITS TTS处理异常: {e}")
                 import traceback
                 traceback.print_exc()
-                # 更新播放顺序状态，标记为已播放
-                with self.synthesis_counter_lock:
-                    failed_order = self.synthesis_counter
-                    self.synthesis_counter += 1
+                # 等待前一个序号的音频放入队列或已播放
                 with self.play_order_condition:
-                    self.played_orders.add(failed_order)
-                    self.last_played_order = failed_order
-                    print(f"📝 音频序号 {failed_order} 处理异常，已标记为已播放")
+                    expected_order = self.last_played_order + 1
+                    while synthesis_order != expected_order:
+                        # 如果前一个序号的音频已经放入队列或已播放,则允许当前音频标记为已播放
+                        if (expected_order in self.played_orders) or (expected_order in self.pending_orders):
+                            break
+                        # 否则等待
+                        print(f"⏳ 处理异常等待音频序号 {expected_order} 完成, 当前序号: {synthesis_order}")
+                        self.play_order_condition.wait(timeout=0.1)
+                        if self.stop_playback_flag:
+                            break
+
+                    # 更新播放顺序状态，标记为已播放并更新last_played_order
+                    self.played_orders.add(synthesis_order)
+                    self.last_played_order = synthesis_order
+                    print(f"📝 音频序号 {synthesis_order} 处理异常，已标记为已播放，更新last_played_order为{synthesis_order}")
                     self.play_order_condition.notify_all()
                 # 设置播放状态为False
                 self.is_playing = False
