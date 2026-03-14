@@ -25,6 +25,9 @@ class ImprovedAIAgent:
         # 添加memory_lake属性以兼容现有代码
         self.memory_lake = self.memory
 
+        # 预热向量数据库模型
+        self._warmup_vector_db()
+
         # 初始化工具管理器
         self.tool_manager = ToolManager()
         self._register_default_tools()
@@ -137,6 +140,26 @@ class ImprovedAIAgent:
         self.tool_manager.register_tool(WeatherTool(), "system")
         self.tool_manager.register_tool(SearchTool(), "search")
         self.tool_manager.register_tool(MusicTool(), "media")
+
+    def _warmup_vector_db(self):
+        """预热向量数据库模型"""
+        try:
+            print("🔍 开始预热向量数据库模型...")
+            import threading
+
+            # 使用后台线程预热，不阻塞主线程
+            def warmup_task():
+                try:
+                    # 执行一次查询以预热向量数据库
+                    result = self.memory.search_knowledge("测试查询", k=1)
+                    print(f"✅ 向量数据库模型预热完成，返回 {len(result)} 个结果")
+                except Exception as e:
+                    print(f"⚠️ 向量数据库模型预热失败: {str(e)}")
+
+            warmup_thread = threading.Thread(target=warmup_task, daemon=True)
+            warmup_thread.start()
+        except Exception as e:
+            print(f"⚠️ 启动向量数据库预热失败: {str(e)}")
 
     def _is_simple_query(self, user_input: str) -> bool:
         """判断是否为简单查询（快速响应模式）"""
@@ -256,6 +279,9 @@ class ImprovedAIAgent:
             fast_mode: 是否使用快速模式
             stream_callback: 流式文本回调函数，接收每个文本块
         """
+        import time
+        start_time = time.time()
+
         # 获取当前事件循环
         try:
             loop = asyncio.get_running_loop()
@@ -338,6 +364,10 @@ class ImprovedAIAgent:
             self.response_cache[cache_key] = response
             self.cache_access_count[cache_key] = 1
 
+            # 打印总耗时
+            total_time = time.time() - start_time
+            print(f"⏱️ 请求处理总耗时: {total_time:.3f}秒")
+
             return response
         finally:
             # 清除待处理请求标记
@@ -389,11 +419,14 @@ class ImprovedAIAgent:
             fast_mode: 是否使用快速模式
             stream_callback: 流式文本回调函数，接收每个文本块
         """
+        import time
+        import asyncio
+
         try:
             model = self.config.get("selected_model", "deepseek-chat")
+            call_start_time = time.time()
 
             # 添加超时控制
-            import asyncio
             try:
                 # 判断是否使用流式响应（默认启用）
                 if stream:
@@ -418,13 +451,15 @@ class ImprovedAIAgent:
                     # 收集流式响应
                     full_response = ""
                     first_chunk_received = False
+                    first_chunk_time = None
 
                     async for chunk in response:
                         if chunk.choices[0].delta.content:
                             if not first_chunk_received:
                                 # 记录首字接收时间
                                 first_chunk_received = True
-                                print(f"⚡ 首字已接收")
+                                first_chunk_time = time.time() - call_start_time
+                                print(f"⚡ 首字已接收，耗时: {first_chunk_time:.3f}秒")
                             chunk_content = chunk.choices[0].delta.content
                             full_response += chunk_content
 
@@ -436,16 +471,18 @@ class ImprovedAIAgent:
                             if hasattr(self, 'text_queue_manager') and self.text_queue_manager:
                                 # 将文本块添加到队列，不进行切分
                                 # 标点符号会触发发送缓冲区中的所有文本
-                                print(f"🔍 接收到的文本块: {chunk_content}")
-                                if chunk_content:
-                                    print(f"🔍 最后一个字符: {chunk_content[-1]}")
-                                    print(f"🔍 最后一个字符的Unicode编码: {ord(chunk_content[-1])}")
+                                # 减少打印语句以降低延迟
+                                # print(f"🔍 接收到的文本块: {chunk_content}")
+                                # if chunk_content:
+                                #     print(f"🔍 最后一个字符: {chunk_content[-1]}")
+                                #     print(f"🔍 最后一个字符的Unicode编码: {ord(chunk_content[-1])}")
                                 # 检查文本块是否以标点符号结尾
                                 # 支持中文标点：，。！？、；："''【】
                                 # 支持英文标点：,.!?:;"''[]
                                 # 注意：不检查括号（）和()，因为它们通常表示动作描述
                                 if chunk_content and chunk_content[-1] in '，。！？、；："''【】,.!?:;"\'\'[]':
-                                    print(f"🔍 检测到标点符号结尾: {chunk_content[-1]}")
+                                    # 减少打印语句以降低延迟
+                                    # print(f"🔍 检测到标点符号结尾: {chunk_content[-1]}")
                                     # 确保标点符号与前面的文本一起发送到TTS
                                     # 不对chunk_content进行任何截断或修改
                                     self.text_queue_manager.add_streaming_text(chunk_content)
@@ -456,6 +493,10 @@ class ImprovedAIAgent:
                     # 如果有文本队列管理器，完成文本输入
                     if hasattr(self, 'text_queue_manager') and self.text_queue_manager:
                         self.text_queue_manager.finalize_text()
+
+                    # 打印总响应时间
+                    total_time = time.time() - call_start_time
+                    print(f"⏱️ AI总响应时间: {total_time:.3f}秒")
 
                     return full_response.strip()
                 else:
@@ -536,6 +577,11 @@ class ImprovedAIAgent:
         self.cache_access_count.clear()
 
         print("✅ ImprovedAIAgent 清理完成")
+
+    def print_performance_stats(self):
+        """打印性能统计信息"""
+        from improved_memory import perf_tracker
+        perf_tracker.print_stats()
 
     def apply_tts_model_weights(self):
         """应用TTS模型权重设置"""

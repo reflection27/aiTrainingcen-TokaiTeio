@@ -120,6 +120,25 @@ def start_http_server(port=5000):
     except Exception as e:
         print(f"❌ 启动HTTP服务器失败: {str(e)}")
 
+async def preload_models():
+    """异步预加载所有模型"""
+    print("🔄 开始预加载模型...")
+
+    try:
+        # 1. 预加载嵌入模型
+        print("📥 正在预加载嵌入模型...")
+        from improved_memory import ImprovedMemorySystem
+        await ImprovedMemorySystem.initialize_embeddings()
+        print("✅ 嵌入模型预加载完成")
+
+        print("✅ 所有模型预加载完成！")
+        return True
+    except Exception as e:
+        print(f"❌ 模型预加载失败: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
 def main():
     """主程序入口"""
     try:
@@ -156,6 +175,23 @@ def main():
         # 加载配置
         print("⚙️ 加载配置...")
         config = load_config()
+
+        # 异步预加载模型
+        print("🔄 预加载模型中...")
+        import asyncio
+        try:
+            # 创建新的事件循环用于预加载
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            preload_success = loop.run_until_complete(preload_models())
+            if not preload_success:
+                print("⚠️ 模型预加载失败，但程序将继续运行")
+            # 关闭预加载事件循环
+            loop.close()
+        except Exception as e:
+            print(f"⚠️ 模型预加载过程中出现错误: {str(e)}")
+            import traceback
+            traceback.print_exc()
 
         # 创建主窗口
         print("🖥️ 创建主窗口...")
