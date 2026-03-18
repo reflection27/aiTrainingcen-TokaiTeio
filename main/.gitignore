@@ -1,6 +1,12 @@
 # 只跟踪main文件夹内的内容
 # 注意：不要使用 /* 来忽略所有文件，因为这会导致 main/ 文件夹也被忽略
 
+# 环境变量文件（包含敏感信息）
+.env
+
+# 配置文件（包含敏感信息）
+ai_agent_config.json
+
 # Python虚拟环境
 venv/
 env/
@@ -24,6 +30,9 @@ recovered_files/
 temp_*.py
 temp_*.txt
 *.backup
+
+# 截图文件
+temp_screenshots/
 
 # Python缓存
 __pycache__/

@@ -583,11 +583,40 @@ class AIAgentApp(QMainWindow):
         """)
         test_event_btn.clicked.connect(self.test_custom_event)
 
+        # 多模态开关按钮
+        self.multimodal_btn = QPushButton("多模态: 关")
+        self.multimodal_btn.setCheckable(True)
+        self.multimodal_btn.setChecked(False)
+        self.multimodal_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B0BEC5, stop:1 #78909C);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 15px;
+                font-weight: bold;
+                font-size: 14px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #90A4AE, stop:1 #546E7A);
+                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #78909C, stop:1 #455A64);
+            }
+            QPushButton:checked {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #42A5F5, stop:1 #1976D2);
+            }
+        """)
+        self.multimodal_btn.clicked.connect(self.toggle_multimodal)
+
         button_layout.addWidget(settings_btn)
         button_layout.addWidget(memory_btn)
         button_layout.addWidget(mcp_btn)
         button_layout.addWidget(test_btn)
         button_layout.addWidget(test_event_btn)
+        button_layout.addWidget(self.multimodal_btn)
 
         right_layout.addWidget(status_group)
         right_layout.addWidget(live2d_label)  # 移除stretch参数，让图片按实际尺寸显示
@@ -1294,6 +1323,25 @@ class AIAgentApp(QMainWindow):
 现在时间是 {time_str}，我已经准备好为您服务了。请告诉我您需要什么帮助吧！
 
 （对了，如果您想了解我的更多功能，可以直接问我"你能做什么"哦~）"""
+
+    def toggle_multimodal(self):
+        """切换多模态功能开关"""
+        if not self.agent.multimodal_processor:
+            self.multimodal_btn.setChecked(False)
+            self.add_message("系统", "⚠️ 多模态处理器未初始化，无法启用多模态功能")
+            return
+
+        is_enabled = self.multimodal_btn.isChecked()
+        self.agent.multimodal_enabled = is_enabled
+
+        if is_enabled:
+            self.multimodal_btn.setText("多模态: 开")
+            self.agent.multimodal_processor.set_auto_capture(True)
+            self.add_message("系统", "✅ 多模态功能已启用")
+        else:
+            self.multimodal_btn.setText("多模态: 关")
+            self.agent.multimodal_processor.set_auto_capture(False)
+            self.add_message("系统", "ℹ️ 多模态功能已禁用")
 
 
 

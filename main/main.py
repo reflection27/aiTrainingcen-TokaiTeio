@@ -14,6 +14,26 @@ from PyQt5.QtWidgets import QApplication
 from PyQt5.QtGui import QFont, QPalette, QColor
 from PyQt5.QtCore import Qt, QObject, pyqtSignal
 
+# 加载.env文件
+def load_env():
+    """加载.env文件中的环境变量"""
+    from pathlib import Path
+    env_path = Path(__file__).parent / ".env"
+    if env_path.exists():
+        print(f"🔍 找到.env文件: {env_path}")
+        with open(env_path, 'r', encoding='utf-8') as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#') and '=' in line:
+                    key, value = line.split('=', 1)
+                    os.environ[key.strip()] = value.strip()
+        print("✅ .env文件加载完成")
+    else:
+        print(f"ℹ️ 未找到.env文件: {env_path}")
+
+# 加载环境变量
+load_env()
+
 # 导入自定义模块
 from config import load_config
 from improved_ai_agent import ImprovedAIAgent

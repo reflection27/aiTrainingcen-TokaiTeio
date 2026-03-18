@@ -18,7 +18,8 @@ class ImprovedAIAgent:
     def __init__(self, config: Dict):
         self.config = config
         self.name = "东海帝王"
-        self.role = "赛马娘世界观特雷森学园的一名学生赛马娘"
+        self.role = "赛马娘世界观特雷森学园的一名学生赛马娘。你活泼开朗、充满活力，热爱奔跑和比赛。"
+        self.system_prompt = f"你是{self.name}，{self.role}。请以东海帝王的思考方式和说话习惯来交流！"
 
         # 初始化异步记忆系统
         self.memory = ImprovedMemorySystem()
@@ -35,12 +36,18 @@ class ImprovedAIAgent:
         self.mcp_tools = self.tool_manager
 
         # 初始化异步OpenAI客户端
-        api_key = config.get("deepseek_key", "")
+        import os
+        api_key = os.getenv("DEEPSEEK_API_KEY", config.get("deepseek_key", ""))
         self.client = AsyncOpenAI(
             api_key=api_key,
             base_url="https://api.deepseek.com/v1",
             timeout=30.0  # 设置默认超时为30秒
         )
+
+        # 初始化多模态处理器
+        self.multimodal_processor = None
+        self.multimodal_enabled = False
+        self._init_multimodal_processor(config)
 
         # 初始化TTS管理器
         self.tts_manager = None
@@ -140,6 +147,42 @@ class ImprovedAIAgent:
         self.tool_manager.register_tool(WeatherTool(), "system")
         self.tool_manager.register_tool(SearchTool(), "search")
         self.tool_manager.register_tool(MusicTool(), "media")
+
+    def _init_multimodal_processor(self, config: Dict):
+        """初始化多模态处理器"""
+        try:
+            import os
+            from plugins.Multimodal.multimodal_processor import MultimodalProcessor
+
+            # 从环境变量或配置文件获取API密钥
+            glm4v_api_key = os.getenv("GLM4V_API_KEY", config.get("glm4v_api_key", ""))
+            if not glm4v_api_key:
+                print("ℹ️ 未配置多模态API密钥，多模态功能已禁用")
+                return
+
+            # 初始化多模态处理器，传递system_prompt
+            self.multimodal_processor = MultimodalProcessor(
+                api_key=glm4v_api_key,
+                base_url=config.get("glm4v_base_url", "https://open.bigmodel.cn/api/paas/v4/chat/completions"),
+                save_dir=config.get("screenshot_save_dir", "temp_screenshots"),
+                default_model=config.get("default_model", "glm-4v-flash"),
+                text_model=config.get("text_model", "deepseek-chat"),
+                system_prompt=self.system_prompt
+            )
+
+            # 设置是否启用多模态处理
+            self.multimodal_enabled = config.get("multimodal_enabled", False)
+
+            if self.multimodal_enabled:
+                self.multimodal_processor.set_auto_capture(True)
+                print("✅ 多模态处理器已初始化并启用")
+            else:
+                print("✅ 多模态处理器已初始化但未启用")
+
+        except Exception as e:
+            print(f"⚠️ 多模态处理器初始化失败: {str(e)}")
+            self.multimodal_processor = None
+            self.multimodal_enabled = False
 
     def _warmup_vector_db(self):
         """预热向量数据库模型"""
@@ -294,6 +337,61 @@ class ImprovedAIAgent:
             fast_mode = self._is_simple_query(user_input)
 
         try:
+            # 检查是否启用多模态处理
+            if self.multimodal_enabled and self.multimodal_processor:
+                # 使用多模态处理器处理用户消息
+                result = self.multimodal_processor.process_with_auto_capture(
+                    user_text=user_input,
+                    system_prompt=self._get_system_prompt(),
+                    capture_type="full",
+                    stream=True,
+                    stream_callback=stream_callback
+                )
+
+                # 如果多模态处理器返回了响应，直接使用
+                if result["response"]:
+                    response = result["response"]
+                    print(f"📸 多模态处理完成，使用截屏: {result['used_screenshot']}")
+
+                    # 保存对话（异步，不阻塞响应）
+                    save_task = loop.create_task(
+                        self.memory.save_conversation_async(
+                            user_input,
+                            response,
+                            user_id,
+                            session_id
+                        )
+                    )
+                    # 添加到后台任务集合
+                    self.background_tasks.add(save_task)
+                    # 添加完成回调，自动清理任务
+                    def _cleanup_task(task):
+                        try:
+                            self.background_tasks.discard(task)
+                            try:
+                                exception = task.exception()
+                                if exception:
+                                    print(f"⚠️ 后台任务异常: {exception}")
+                            except Exception:
+                                pass
+                        except Exception:
+                            pass
+                    save_task.add_done_callback(_cleanup_task)
+
+                    # 缓存响应
+                    if len(self.response_cache) >= self.max_cache_size:
+                        lru_key = min(self.cache_access_count, key=self.cache_access_count.get)
+                        del self.response_cache[lru_key]
+                        del self.cache_access_count[lru_key]
+                    self.response_cache[cache_key] = response
+                    self.cache_access_count[cache_key] = 1
+
+                    # 打印总耗时
+                    total_time = time.time() - start_time
+                    print(f"⏱️ 请求处理总耗时: {total_time:.3f}秒")
+
+                    return response
+
             # 并行获取上下文和构建基础prompt
             context_task = loop.create_task(self.memory.get_context_async(session_id, user_input))
 
@@ -379,7 +477,7 @@ class ImprovedAIAgent:
         prompt_parts = []
 
         # 添加系统提示
-        prompt_parts.append(f"你是{self.name}，{self.role}。")
+        prompt_parts.append(self.system_prompt)
 
         # 快速模式：简化prompt
         if fast_mode:
@@ -522,9 +620,7 @@ class ImprovedAIAgent:
 
     def _get_system_prompt(self) -> str:
         """获取系统提示词"""
-        return f"""你是{self.name}，{self.role}。
-你活泼开朗、充满活力，热爱奔跑和比赛。
-请以东海帝王的思考方式和说话习惯来交流！"""
+        return self.system_prompt
 
     async def execute_tool_async(
         self,
