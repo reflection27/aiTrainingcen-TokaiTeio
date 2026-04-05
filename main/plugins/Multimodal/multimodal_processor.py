@@ -510,6 +510,61 @@ class MultimodalProcessor:
             "used_screenshot": False
         }
 
+    def describe_image(
+        self,
+        image_path: str,
+        user_question: str = ""
+    ) -> Dict[str, Any]:
+        """
+        仅识别图片内容，不进行角色扮演
+
+        Args:
+            image_path: 图片文件路径
+            user_question: 用户的问题（可选）
+
+        Returns:
+            包含图片描述的字典:
+            {
+                "description": 图片描述文本,
+                "image_path": 图片路径
+            }
+        """
+        # 构建纯图片识别的系统提示词
+        description_prompt = """
+你是一个专业的图片内容识别助手。请客观、准确地描述图片中的内容。
+
+【任务要求】
+1. 识别图片中的主要物体、人物、场景和文字
+2. 描述图片的颜色、布局和风格
+3. 如果有用户问题，根据图片内容回答问题
+4. 保持客观中立，不进行角色扮演
+5. 使用简洁明了的语言描述
+
+【输出格式】
+直接输出图片描述，不要添加任何额外说明。
+"""
+
+        # 调用模型进行图片识别
+        try:
+            response = self.client.chat_with_image(
+                text=user_question if user_question else "请描述这张图片的内容",
+                image_path=image_path,
+                system_prompt=description_prompt,
+                temperature=0.3,  # 使用较低的温度以获得更准确的描述
+                max_tokens=500
+            )
+
+            return {
+                "description": response,
+                "image_path": image_path
+            }
+        except Exception as e:
+            print(f"⚠️ 图片识别失败: {str(e)}")
+            return {
+                "description": "",
+                "image_path": image_path
+            }
+
     def _build_enhanced_system_prompt(self, original_prompt: Optional[str] = None) -> str:
         """
         构建增强的系统提示词，让模型自行判断是否需要参考截屏

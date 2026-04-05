@@ -1,6 +1,6 @@
 {
   "glm4v_base_url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
-  "default_model": "glm-4v",
+  "default_model": "glm-4v-flash",
   "text_model": "deepseek-chat",
   "default_temperature": 0.7,
   "default_max_tokens": 1024,

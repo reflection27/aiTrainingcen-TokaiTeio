@@ -339,21 +339,119 @@ class ImprovedAIAgent:
         try:
             # 检查是否启用多模态处理
             if self.multimodal_enabled and self.multimodal_processor:
-                # 使用多模态处理器处理用户消息
-                result = self.multimodal_processor.process_with_auto_capture(
-                    user_text=user_input,
-                    system_prompt=self._get_system_prompt(),
-                    capture_type="full",
-                    stream=True,
-                    stream_callback=stream_callback
-                )
+                import time
+                multimodal_start_time = time.time()
+                
+                # 使用多模态处理器的截屏功能
+                screenshot_path = None
+                screenshot_start_time = time.time()
+                try:
+                    screenshot_path = self.multimodal_processor.screen_capture.capture_full_screen()
+                    screenshot_time = time.time() - screenshot_start_time
+                    print(f"📸 已截屏: {screenshot_path}，耗时: {screenshot_time:.3f}秒")
+                except Exception as e:
+                    screenshot_time = time.time() - screenshot_start_time
+                    print(f"⚠️ 截屏失败，耗时: {screenshot_time:.3f}秒，错误: {str(e)}")
 
-                # 如果多模态处理器返回了响应，直接使用
-                if result["response"]:
-                    response = result["response"]
-                    print(f"📸 多模态处理完成，使用截屏: {result['used_screenshot']}")
+                # 并行执行图片识别和上下文获取
+                image_description = ""
+                description_task = None
+                
+                if screenshot_path:
+                    # 创建图片识别任务
+                    async def get_image_description():
+                        try:
+                            description_start_time = time.time()
+                            result = self.multimodal_processor.describe_image(
+                                image_path=screenshot_path,
+                                user_question=user_input
+                            )
+                            description_time = time.time() - description_start_time
+                            print(f"📸 图片识别完成，耗时: {description_time:.3f}秒")
+                            return result.get("description", "")
+                        except Exception as e:
+                            description_time = time.time() - description_start_time
+                            print(f"⚠️ 图片识别失败，耗时: {description_time:.3f}秒，错误: {str(e)}")
+                            return ""
+                    
+                    description_task = loop.create_task(get_image_description())
+                
+                # 获取上下文（使用原始用户输入）
+                context_start_time = time.time()
+                context_task = loop.create_task(self.memory.get_context_async(session_id, user_input))
+                
+                # 并行等待图片识别和获取上下文完成
+                tasks = []
+                if description_task:
+                    tasks.append(("description", description_task))
+                tasks.append(("context", context_task))
+                
+                # 使用asyncio.gather并行执行
+                try:
+                    results = await asyncio.gather(
+                        *[task for _, task in tasks],
+                        return_exceptions=True
+                    )
+                    
+                    # 处理结果
+                    for i, (task_name, _) in enumerate(tasks):
+                        if task_name == "description":
+                            if isinstance(results[i], Exception):
+                                print(f"⚠️ 图片识别失败: {str(results[i])}")
+                            else:
+                                image_description = results[i]
+                                print(f"📸 图片识别结果: {image_description}")
+                        elif task_name == "context":
+                            context_time = time.time() - context_start_time
+                            if isinstance(results[i], Exception):
+                                print(f"⚠️ 获取上下文失败: {str(results[i])}，耗时: {context_time:.3f}秒")
+                                context = None
+                            else:
+                                context = results[i]
+                                print(f"📸 获取上下文完成，耗时: {context_time:.3f}秒")
+                except Exception as e:
+                    print(f"⚠️ 并行执行失败: {str(e)}")
+                    context = None
+
+
+
+                
+
+                
+                # 如果有图片描述，将其添加到用户输入中
+                enhanced_user_input = user_input
+                if image_description:
+                    enhanced_user_input = f"{user_input}\n\n[图片内容]\n{image_description}"
+                
+                # 打印多模态处理总耗时
+                multimodal_total_time = time.time() - multimodal_start_time
+                print(f"📸 多模态处理总耗时: {multimodal_total_time:.3f}秒")
+
+                # 构建基础prompt（使用增强后的用户输入）
+                base_prompt = f"你是{self.name}，{self.role}。\n当前对话:\n用户: {enhanced_user_input}\n助手:"
+
+                # 使用主程序处理增强后的用户输入
+                if context and (context.get("history") or context.get("knowledge")):
+                    # 构建完整prompt（使用增强后的用户输入）
+                    full_prompt = self._build_prompt(enhanced_user_input, context, fast_mode=fast_mode)
+                    response = await self._call_ai_async(full_prompt, stream=True, fast_mode=fast_mode, stream_callback=stream_callback)
+                else:
+                    response = await self._call_ai_async(base_prompt, stream=True, fast_mode=fast_mode, stream_callback=stream_callback)
+
+                # 清理临时截图
+                if screenshot_path and os.path.exists(screenshot_path):
+                    try:
+                        os.remove(screenshot_path)
+                        print(f"📸 已清理临时截图: {screenshot_path}")
+                    except Exception as e:
+                        print(f"⚠️ 清理临时截图失败: {str(e)}")
+
+                # 如果成功获取响应，返回
+                if response:
+                    print(f"📸 多模态处理完成，使用了图片描述")
 
                     # 保存对话（异步，不阻塞响应）
+                    # 注意：保存原始用户输入，而不是增强后的用户输入
                     save_task = loop.create_task(
                         self.memory.save_conversation_async(
                             user_input,

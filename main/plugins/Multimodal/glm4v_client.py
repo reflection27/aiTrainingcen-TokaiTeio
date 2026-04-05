@@ -10,7 +10,7 @@ from typing import Optional, Dict, Any
 class GLM4VFlashClient:
     """GLM-4V-Flash 客户端类"""
 
-    def __init__(self, api_key: str, base_url: str = "https://open.bigmodel.cn/api/paas/v4/chat/completions", model: str = "glm-4v"):
+    def __init__(self, api_key: str, base_url: str = "https://open.bigmodel.cn/api/paas/v4/chat/completions", model: str = "glm-4v-flash"):
         """
         初始化 GLM-4V 客户端
 
