@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>东海帝王AI - 系统架构流程图</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<style>
+  body {
+    font-family: "Microsoft YaHei UI", sans-serif;
+    background: #f5f5f5;
+    padding: 20px;
+  }
+  h2 {
+    color: #333;
+    border-left: 4px solid #4a90e2;
+    padding-left: 10px;
+    margin-top: 40px;
+  }
+  .diagram-box {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 30px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    overflow-x: auto;
+  }
+</style>
+</head>
+<body>
+
+<h1 style="text-align:center; color:#333;">东海帝王AI — 系统架构流程图</h1>
+
+<!-- 1. 启动流程 -->
+<h2>1. 启动流程</h2>
+<div class="diagram-box">
+<pre class="mermaid">
+flowchart TD
+    A([python main.py]) --> B[加载 .env 环境变量]
+    B --> C[load_config 读取配置]
+    C --> D[asyncio 预加载嵌入模型\nBAAI/bge-small-zh-v1.5]
+    D --> E[创建 QApplication\nFusion 主题 / 微软雅黑]
+    E --> F[创建 AIAgentApp 主窗口]
+    F --> G[ImprovedAIAgent 初始化]
+
+    G --> G1[ImprovedMemorySystem\nFAISS + SQLite]
+    G --> G2[ToolManager\n天气 / 搜索 / 音乐]
+    G --> G3[TTS 初始化\nGPT-SoVITS 或 Azure]
+    G --> G4[TextQueueManager 启动]
+    G --> G5[MultimodalProcessor 初始化\nGLM-4V-Flash]
+
+    F --> H[安装 Qt 事件过滤器]
+    H --> I[启动 HTTP 服务器\nlocalhost:5000 后台线程]
+    I --> J([Qt 事件循环 app.exec_])
+
+    style A fill:#4a90e2,color:#fff
+    style J fill:#4a90e2,color:#fff
+</pre>
+</div>
+
+<!-- 2. 语音输入（ASR）流程 -->
+<h2>2. 语音输入（ASR）流程</h2>
+<div class="diagram-box">
+<pre class="mermaid">
+flowchart LR
+    A([用户说话]) --> B[RealtimeSTT\nexample_realtimestt.py\n独立进程]
+    B -->|POST /api/text_input\nlocalhost:5000| C[HTTP 服务器\nmain.py]
+    C --> D[QApplication.postEvent\n自定义 TextEvent]
+    D --> E[Qt 事件过滤器\n主线程接收]
+    E --> F[input_edit.setText]
+    F -->|QTimer.singleShot 100ms| G[window.send_message]
+    G --> H([进入对话处理流程])
+
+    style A fill:#27ae60,color:#fff
+    style H fill:#27ae60,color:#fff
+</pre>
+</div>
+
+<!-- 3. 对话处理主流程 -->
+<h2>3. 对话处理主流程</h2>
+<div class="diagram-box">
+<pre class="mermaid">
+flowchart TD
+    A([用户输入]) --> B{命中响应缓存?}
+    B -->|是| Z([直接返回缓存])
+    B -->|否| C{相同请求处理中?}
+    C -->|是| D[等待已有任务完成]
+    D --> Z
+    C -->|否| E{简单问题?\n_is_simple_query}
+
+    E -->|是 快速模式| F1[仅取最近1条历史]
+    E -->|否 正常模式| F2[取最近3条历史\n+ 向量知识库检索]
+
+    F1 --> G[_get_system_prompt\n角色人设 + 游戏画面缓存]
+    F2 --> G
+
+    G --> H{multimodal_enabled?}
+
+    H -->|是 per-message 模式| I[截图 capture_full_screen\n+ GLM-4V describe_image\n与上下文获取并行]
+    I --> J[image_description 注入\n用户输入文本]
+    J --> K[DeepSeek 流式调用\ndeepseek-chat]
+
+    H -->|否| K
+
+    K -->|stream chunk| L[TextQueueManager\n按标点切分]
+    L -->|完整句子| M[TTS 合成\nGPT-SoVITS / Azure]
+    M --> N([语音播放])
+
+    K --> O[保存对话到记忆系统\n异步后台任务]
+    K --> P[写入响应缓存]
+
+    style A fill:#4a90e2,color:#fff
+    style Z fill:#27ae60,color:#fff
+    style N fill:#27ae60,color:#fff
+</pre>
+</div>
+
+<!-- 4. 游戏画面后台监控流程 -->
+<h2>4. 游戏画面后台监控（新架构）</h2>
+<div class="diagram-box">
+<pre class="mermaid">
+flowchart TD
+    A([start_game_monitoring\ninterval / diff_threshold\ncapture_type / title_keyword]) --> B[启动 daemon 后台线程\n_monitoring_loop]
+
+    B --> C[_capture_for_monitoring]
+    C -->|capture_type=window| C1[capture_window_by_title\nwin32gui 按标题截图]
+    C -->|capture_type=full| C2[capture_full_screen\npyautogui 全屏截图]
+    C1 --> D[PIL resize 压缩]
+    C2 --> D
+
+    D --> E[转灰度 numpy 数组]
+    E --> F{prev_array 存在?}
+    F -->|否 首次| G[直接更新]
+    F -->|是| H[计算像素平均差 diff]
+    H --> I{diff > threshold?}
+    I -->|否 画面无变化| J[跳过 打印 diff 值]
+    I -->|是 画面已变化| G
+
+    G --> K[更新 prev_screenshot_array]
+    K --> L[describe_image 调用\nGLM-4V-Flash\n80字以内描述]
+    L --> M[game_state_cache 更新]
+
+    J --> N[删除临时截图]
+    M --> N
+    N --> O{stop_event 触发?}
+    O -->|否| P[wait interval 秒]
+    P --> C
+    O -->|是| Q([监控停止\ncache 清空])
+
+    M -.->|每次对话| R[_get_system_prompt\n注入 【当前游戏画面】]
+    R -.-> S[DeepSeek 自行判断\n是否在回复中引用]
+
+    style A fill:#8e44ad,color:#fff
+    style Q fill:#e74c3c,color:#fff
+    style S fill:#27ae60,color:#fff
+</pre>
+</div>
+
+<!-- 5. 游戏配置加载流程 -->
+<h2>5. 游戏配置加载流程</h2>
+<div class="diagram-box">
+<pre class="mermaid">
+flowchart TD
+    A([start_game_monitoring_from_config\ngame_name]) --> B[load_game_config\ngame_name]
+    B --> C{game/game_name/\nconfig.json 存在?}
+    C -->|否| D[FileNotFoundError\n列出可用配置]
+    C -->|是| E[读取 JSON 配置]
+
+    E --> F[start_game_monitoring\n传入所有参数]
+
+    subgraph config.json 字段
+        E1[interval 截图间隔]
+        E2[diff_threshold 变化阈值]
+        E3[capture_type full/window]
+        E4[title_keyword 窗口标题关键词]
+        E5[resize_to 压缩尺寸]
+        E6[describe_prompt 游戏专属描述提示词]
+    end
+
+    E --> E1 & E2 & E3 & E4 & E5 & E6
+
+    G([list_game_configs]) --> H[扫描 game/ 子目录\n检查 config.json 是否存在]
+    H --> I[返回可用游戏名列表\numamusume / minecraft / 云顶之弈]
+
+    style A fill:#8e44ad,color:#fff
+    style D fill:#e74c3c,color:#fff
+    style G fill:#8e44ad,color:#fff
+</pre>
+</div>
+
+<!-- 6. 各游戏配置参数 -->
+<h2>6. 各游戏配置参数</h2>
+<div class="diagram-box">
+<pre class="mermaid">
+flowchart LR
+    subgraph umamusume/config.json
+        A1[capture_type: window\ntitle_keyword: umamusume\ninterval: 30s\ndiff_threshold: 0.04\nresize: 800x600]
+        A2[describe_prompt:\n描述当前界面训练/比赛/活动/剧情\n及关键数字信息]
+    end
+    subgraph minecraft/config.json
+        B1[capture_type: window\ntitle_keyword: Minecraft\ninterval: 15s\ndiff_threshold: 0.09\nresize: 960x540]
+        B2[describe_prompt:\n描述环境/生物群系/\n正在做的事/周围危险]
+    end
+    subgraph 云顶之弈/config.json
+        C1[capture_type: full\ntitle_keyword: null\ninterval: 10s\ndiff_threshold: 0.10\nresize: 1024x576]
+        C2[describe_prompt:\n描述阶段规划/战斗/购物\n血量/费用/关键棋子]
+    end
+
+    A1 --- A2
+    B1 --- B2
+    C1 --- C2
+</pre>
+</div>
+
+<!-- 7. TTS 流水线 -->
+<h2>7. TTS 流水线</h2>
+<div class="diagram-box">
+<pre class="mermaid">
+flowchart LR
+    A[DeepSeek 流式 chunk] --> B[TextQueueManager\nadd_streaming_text]
+    B --> C{括号内容?\n（动作描述）}
+    C -->|是 过滤| D[丢弃]
+    C -->|否| E{遇到标点?}
+    E -->|否| F[写入 buffer 等待]
+    F --> B
+    E -->|是| G[完整句子入队\ntext_queue]
+    G --> H{TTS 引擎?}
+    H -->|GPT-SoVITS| I[gpt_sovits_unified.py\nGradio 或 api_v2\nlocalhost:9880]
+    H -->|Azure| J[TTSManager\nazure.cognitiveservices\n+ pygame 播放]
+    I --> K([语音输出])
+    J --> K
+
+    style A fill:#e67e22,color:#fff
+    style K fill:#27ae60,color:#fff
+</pre>
+</div>
+
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'default', flowchart: { curve: 'basis' } });
+</script>
+</body>
+</html>

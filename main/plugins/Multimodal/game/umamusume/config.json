@@ -1,0 +1,10 @@
+{
+  "game_name": "赛马娘 PrettyDerby",
+  "process_name": "umamusume.exe",
+  "title_keyword": "umamusume",
+  "capture_type": "window",
+  "interval": 30,
+  "diff_threshold": 0.04,
+  "resize_to": [800, 600],
+  "describe_prompt": "用不超过80字简短描述当前赛马娘游戏画面状态，包括当前处于哪个界面（训练/比赛/活动/剧情等）以及关键数字信息"
+}

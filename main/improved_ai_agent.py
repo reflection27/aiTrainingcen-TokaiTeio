@@ -574,8 +574,8 @@ class ImprovedAIAgent:
         """构建完整的prompt（优化版 - 支持快速模式）"""
         prompt_parts = []
 
-        # 添加系统提示
-        prompt_parts.append(self.system_prompt)
+        # 添加系统提示（含游戏画面缓存）
+        prompt_parts.append(self._get_system_prompt())
 
         # 快速模式：简化prompt
         if fast_mode:
@@ -717,8 +717,16 @@ class ImprovedAIAgent:
             return f"处理出错: {str(e)}"
 
     def _get_system_prompt(self) -> str:
-        """获取系统提示词"""
-        return self.system_prompt
+        """获取系统提示词（动态注入游戏画面缓存）"""
+        prompt = self.system_prompt
+        if (self.multimodal_processor and
+                self.multimodal_processor.game_state_cache):
+            prompt += (
+                f"\n\n【当前游戏画面】\n"
+                f"{self.multimodal_processor.game_state_cache}\n"
+                f"（以上是屏幕实时信息，仅在与对话相关时自然融入回复，无需每次都提及）"
+            )
+        return prompt
 
     async def execute_tool_async(
         self,

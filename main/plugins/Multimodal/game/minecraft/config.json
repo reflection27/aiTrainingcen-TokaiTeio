@@ -1,0 +1,12 @@
+{
+  "game_name": "Minecraft",
+  "process_name_java": "javaw.exe",
+  "process_name_bedrock": "Minecraft.Windows.exe",
+  "title_keyword": "Minecraft",
+  "capture_type": "window",
+  "capture_type_fullscreen": "full",
+  "interval": 15,
+  "diff_threshold": 0.09,
+  "resize_to": [960, 540],
+  "describe_prompt": "用不超过80字简短描述当前Minecraft画面状态，包括所处环境（生物群系/地下/建筑中等）、正在做的事、周围是否有危险"
+}

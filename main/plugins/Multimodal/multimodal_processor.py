@@ -5,8 +5,11 @@
 
 import os
 import json
+import threading
 import requests
+import numpy as np
 from typing import Optional, Dict, Any, Tuple
+from PIL import Image
 from .glm4v_client import GLM4VFlashClient
 from .screen_capture import ScreenCapture
 
@@ -68,6 +71,12 @@ class MultimodalProcessor:
         # 设置自动截屏
         self.auto_capture = self.config.get("auto_capture", False)
         self.last_screenshot_path = None  # 上一次截屏的路径
+
+        # 游戏画面监控
+        self.game_state_cache = ""               # 最新的游戏画面描述缓存
+        self._prev_screenshot_array = None       # 上一帧灰度数组，用于 diff 检测
+        self._monitor_thread: Optional[threading.Thread] = None
+        self._monitor_stop_event = threading.Event()
 
         # 加载角色信息
         character_info = self.config.get("character_info", {})
@@ -596,3 +605,176 @@ class MultimodalProcessor:
             enhanced_prompt = enhanced_prompt + "\n" + self.multimodal_instruction
 
         return enhanced_prompt
+
+    # ------------------------------------------------------------------ #
+    #  游戏画面后台监控                                                     #
+    # ------------------------------------------------------------------ #
+
+    @staticmethod
+    def list_game_configs() -> list:
+        """列出 game/ 目录下所有可用的游戏配置名称"""
+        game_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "game")
+        if not os.path.isdir(game_dir):
+            return []
+        return [
+            name for name in os.listdir(game_dir)
+            if os.path.isfile(os.path.join(game_dir, name, "config.json"))
+        ]
+
+    @staticmethod
+    def load_game_config(game_name: str) -> Dict[str, Any]:
+        """
+        从 game/{game_name}/config.json 加载游戏监控配置
+
+        Args:
+            game_name: 游戏文件夹名称，如 "umamusume"、"minecraft"、"云顶之弈"
+
+        Returns:
+            配置字典
+
+        Raises:
+            FileNotFoundError: 配置文件不存在
+        """
+        config_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "game", game_name, "config.json"
+        )
+        if not os.path.isfile(config_path):
+            available = MultimodalProcessor.list_game_configs()
+            raise FileNotFoundError(
+                f"找不到游戏配置 '{game_name}'，"
+                f"可用配置: {available}"
+            )
+        with open(config_path, "r", encoding="utf-8") as f:
+            return json.load(f)
+
+    def start_game_monitoring_from_config(self, game_name: str):
+        """
+        从 game/{game_name}/config.json 读取参数并启动监控
+
+        Args:
+            game_name: 游戏文件夹名称，如 "umamusume"、"minecraft"、"云顶之弈"
+        """
+        cfg = self.load_game_config(game_name)
+        self.start_game_monitoring(
+            interval=cfg.get("interval", 20),
+            diff_threshold=cfg.get("diff_threshold", 0.05),
+            capture_type=cfg.get("capture_type", "full"),
+            title_keyword=cfg.get("title_keyword"),
+            resize_to=tuple(cfg["resize_to"]) if cfg.get("resize_to") else (800, 600),
+            describe_prompt=cfg.get("describe_prompt")
+        )
+
+    def start_game_monitoring(
+        self,
+        interval: int = 20,
+        diff_threshold: float = 0.05,
+        capture_type: str = "full",
+        title_keyword: Optional[str] = None,
+        resize_to: Tuple[int, int] = (800, 600),
+        describe_prompt: Optional[str] = None
+    ):
+        """
+        启动后台游戏画面监控线程
+
+        Args:
+            interval: 截图间隔秒数
+            diff_threshold: 画面变化阈值（0~1），超过才重新调用视觉模型
+            capture_type: "full" 或 "window"
+            title_keyword: capture_type="window" 时的窗口标题关键词
+            resize_to: 截图压缩尺寸，减少 API 传输量
+            describe_prompt: 传给 GLM-4V 的描述提示词，None 时使用默认
+        """
+        if self._monitor_thread and self._monitor_thread.is_alive():
+            print("⚠️ 游戏监控已在运行")
+            return
+
+        self._monitor_stop_event.clear()
+        self._monitor_thread = threading.Thread(
+            target=self._monitoring_loop,
+            args=(interval, diff_threshold, capture_type, title_keyword,
+                  resize_to, describe_prompt),
+            daemon=True
+        )
+        self._monitor_thread.start()
+        print(f"🎮 游戏画面监控已启动 | 间隔={interval}s 阈值={diff_threshold} 截图={capture_type}")
+
+    def stop_game_monitoring(self):
+        """停止后台游戏画面监控，并清空缓存"""
+        self._monitor_stop_event.set()
+        self.game_state_cache = ""
+        self._prev_screenshot_array = None
+        print("🎮 游戏画面监控已停止")
+
+    def _capture_for_monitoring(
+        self,
+        capture_type: str,
+        title_keyword: Optional[str],
+        resize_to: Tuple[int, int]
+    ) -> Optional[str]:
+        """监控专用截图（含 resize），返回截图路径，失败返回 None"""
+        try:
+            if capture_type == "window" and title_keyword:
+                path = self.screen_capture.capture_window_by_title(title_keyword)
+            else:
+                path = self.screen_capture.capture_full_screen()
+
+            if resize_to:
+                img = Image.open(path).convert("RGB")
+                img = img.resize(resize_to, Image.LANCZOS)
+                img.save(path)
+
+            return path
+        except Exception as e:
+            print(f"⚠️ 监控截图失败: {e}")
+            return None
+
+    def _monitoring_loop(
+        self,
+        interval: int,
+        diff_threshold: float,
+        capture_type: str,
+        title_keyword: Optional[str],
+        resize_to: Tuple[int, int],
+        describe_prompt: Optional[str]
+    ):
+        """后台监控主循环"""
+        prompt = describe_prompt or "用不超过80字简短描述当前游戏画面状态"
+        path = None
+        while not self._monitor_stop_event.is_set():
+            try:
+                path = self._capture_for_monitoring(capture_type, title_keyword, resize_to)
+                if path is None:
+                    self._monitor_stop_event.wait(interval)
+                    continue
+
+                # diff 检测
+                gray = np.array(Image.open(path).convert("L"))
+                should_update = True
+                if self._prev_screenshot_array is not None:
+                    diff = np.mean(
+                        np.abs(gray.astype(np.int16) - self._prev_screenshot_array.astype(np.int16))
+                    ) / 255
+                    should_update = diff > diff_threshold
+                    if not should_update:
+                        print(f"🎮 画面变化 {diff:.3f} < 阈值 {diff_threshold}，跳过")
+
+                if should_update:
+                    self._prev_screenshot_array = gray
+                    result = self.describe_image(path, prompt)
+                    description = result.get("description", "")
+                    if description:
+                        self.game_state_cache = description
+                        print(f"🎮 游戏状态已更新: {description[:60]}…")
+
+            except Exception as e:
+                print(f"⚠️ 游戏监控循环出错: {e}")
+            finally:
+                if path and os.path.exists(path):
+                    try:
+                        os.remove(path)
+                    except Exception:
+                        pass
+                path = None
+
+            self._monitor_stop_event.wait(interval)

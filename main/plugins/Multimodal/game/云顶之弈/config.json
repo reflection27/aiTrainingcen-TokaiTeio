@@ -1,0 +1,10 @@
+{
+  "game_name": "云顶之弈",
+  "process_name": "League of Legends.exe",
+  "title_keyword": null,
+  "capture_type": "full",
+  "interval": 10,
+  "diff_threshold": 0.10,
+  "resize_to": [1024, 576],
+  "describe_prompt": "用不超过80字简短描述当前云顶之弈画面状态，包括当前阶段（规划/战斗/购物等）、血量、费用、棋盘上的关键棋子信息"
+}
