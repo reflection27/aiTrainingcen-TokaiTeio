@@ -93,13 +93,20 @@ flowchart TD
     F1 --> G[_get_system_prompt\n角色人设 + 游戏画面缓存]
     F2 --> G
 
-    G --> H{multimodal_enabled?}
+    G --> H{游戏监控运行中?\n_monitor_thread.is_alive}
 
-    H -->|是 per-message 模式| I[截图 capture_full_screen\n+ GLM-4V describe_image\n与上下文获取并行]
+    H -->|是 游戏模式| H1[跳过截图\ngame_state_cache 已注入\nsystem prompt]
+
+    H -->|否| H2{multimodal_enabled?}
+    H2 -->|是 per-message 模式| I[截图 capture_full_screen\n+ GLM-4V describe_image\n与上下文获取并行]
     I --> J[image_description 注入\n用户输入文本]
     J --> K[DeepSeek 流式调用\ndeepseek-chat]
 
-    H -->|否| K
+    H1 --> K
+
+    GLM4V([GLM4VFlashClient\n单一实例 共用同一 API Key\nGLM4V_API_KEY\n游戏监控与per-message共用])
+    I -.->|调用| GLM4V
+    H2 -->|否 纯文本模式| K
 
     K -->|stream chunk| L[TextQueueManager\n按标点切分]
     L -->|完整句子| M[TTS 合成\nGPT-SoVITS / Azure]
@@ -111,6 +118,7 @@ flowchart TD
     style A fill:#4a90e2,color:#fff
     style Z fill:#27ae60,color:#fff
     style N fill:#27ae60,color:#fff
+    style H1 fill:#8e44ad,color:#fff
 </pre>
 </div>
 
@@ -138,6 +146,9 @@ flowchart TD
     G --> K[更新 prev_screenshot_array]
     K --> L[describe_image 调用\nGLM-4V-Flash\n80字以内描述]
     L --> M[game_state_cache 更新]
+
+    GLM4V([GLM4VFlashClient\n单一实例 共用同一 API Key\nGLM4V_API_KEY\n游戏监控与per-message共用])
+    L -.->|调用| GLM4V
 
     J --> N[删除临时截图]
     M --> N

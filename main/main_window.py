@@ -3,10 +3,10 @@ import sys
 import os
 import datetime
 import threading
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout, 
-                             QHBoxLayout, QTextEdit, QLineEdit, QPushButton, 
-                             QLabel, QProgressBar, QSplitter, QGroupBox, 
-                             QFormLayout, QStatusBar, QFileDialog, QDialog, QSizePolicy)
+from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+                             QHBoxLayout, QTextEdit, QLineEdit, QPushButton,
+                             QLabel, QProgressBar, QSplitter, QGroupBox,
+                             QFormLayout, QStatusBar, QFileDialog, QDialog, QSizePolicy, QMenu)
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap
 
@@ -611,31 +611,155 @@ class AIAgentApp(QMainWindow):
         """)
         self.multimodal_btn.clicked.connect(self.toggle_multimodal)
 
+        # 陪伴模式按钮
+        companion_btn = QPushButton("陪伴模式")
+        companion_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F06292, stop:1 #C2185B);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 15px;
+                font-weight: bold;
+                font-size: 14px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #E91E63, stop:1 #AD1457);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #C2185B, stop:1 #880E4F);
+            }
+        """)
+        companion_btn.clicked.connect(self._companion_and_compact)
+
+        # 游戏模式按钮
+        self.game_mode_btn = QPushButton("游戏模式")
+        self.game_mode_btn.setCheckable(True)
+        self.game_mode_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #66BB6A, stop:1 #388E3C);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 15px;
+                font-weight: bold;
+                font-size: 14px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4CAF50, stop:1 #2E7D32);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #388E3C, stop:1 #1B5E20);
+            }
+            QPushButton:checked {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFA726, stop:1 #E65100);
+            }
+        """)
+        self.game_mode_btn.clicked.connect(self._game_and_compact)
+
+        # 悬浮窗模式按钮
+        compact_btn = QPushButton("悬浮窗模式")
+        compact_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #78909C, stop:1 #455A64);
+                color: #FFFFFF;
+                border: none;
+                border-radius: 8px;
+                padding: 10px 15px;
+                font-weight: bold;
+                font-size: 14px;
+                min-height: 20px;
+            }
+            QPushButton:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #546E7A, stop:1 #37474F);
+            }
+            QPushButton:pressed {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #455A64, stop:1 #263238);
+            }
+        """)
+        compact_btn.clicked.connect(self.enter_compact_mode)
+
         button_layout.addWidget(settings_btn)
         button_layout.addWidget(memory_btn)
         button_layout.addWidget(mcp_btn)
         button_layout.addWidget(test_btn)
         button_layout.addWidget(test_event_btn)
         button_layout.addWidget(self.multimodal_btn)
+        button_layout.addWidget(companion_btn)
+        button_layout.addWidget(self.game_mode_btn)
+        button_layout.addWidget(compact_btn)
 
         right_layout.addWidget(status_group)
         right_layout.addWidget(live2d_label)  # 移除stretch参数，让图片按实际尺寸显示
         right_layout.addLayout(button_layout)
         right_widget.setLayout(right_layout)
 
-        # 添加分割器
-        splitter = QSplitter(Qt.Horizontal)
-        splitter.addWidget(chat_widget)
-        splitter.addWidget(right_widget)
-        splitter.setSizes([1000, 350])  # 增加聊天区域宽度，右侧保持不变
-        # 禁用分割器拖拽功能
-        splitter.setChildrenCollapsible(False)
-        splitter.setHandleWidth(0)
-        # 设置分割器保持等比例缩放
-        splitter.setStretchFactor(0, 1)  # 聊天区域可拉伸
-        splitter.setStretchFactor(1, 0)  # 右侧区域固定比例
+        # 精简模式按钮栏（默认隐藏）
+        self._compact_bar = QWidget()
+        compact_bar_layout = QHBoxLayout()
+        compact_bar_layout.setContentsMargins(0, 4, 0, 0)
+        compact_bar_layout.setSpacing(6)
 
-        main_layout.addWidget(splitter)
+        compact_companion_btn = QPushButton("陪伴模式")
+        compact_companion_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #F06292,stop:1 #C2185B);
+                color:#FFF; border:none; border-radius:8px;
+                padding:8px 12px; font-weight:bold; font-size:13px;
+            }
+            QPushButton:hover { background:#E91E63; }
+        """)
+        compact_companion_btn.clicked.connect(self.launch_companion_mode)
+
+        self._compact_game_btn = QPushButton("游戏模式")
+        self._compact_game_btn.setCheckable(True)
+        self._compact_game_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #66BB6A,stop:1 #388E3C);
+                color:#FFF; border:none; border-radius:8px;
+                padding:8px 12px; font-weight:bold; font-size:13px;
+            }
+            QPushButton:hover { background:#4CAF50; }
+            QPushButton:checked {
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #FFA726,stop:1 #E65100);
+            }
+        """)
+        self._compact_game_btn.clicked.connect(self._compact_game_toggle)
+
+        fullscreen_btn = QPushButton("大屏模式")
+        fullscreen_btn.setStyleSheet("""
+            QPushButton {
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #78909C,stop:1 #455A64);
+                color:#FFF; border:none; border-radius:8px;
+                padding:8px 12px; font-weight:bold; font-size:13px;
+            }
+            QPushButton:hover { background:#546E7A; }
+        """)
+        fullscreen_btn.clicked.connect(self.exit_compact_mode)
+
+        compact_bar_layout.addWidget(compact_companion_btn)
+        compact_bar_layout.addWidget(self._compact_game_btn)
+        compact_bar_layout.addStretch()
+        compact_bar_layout.addWidget(fullscreen_btn)
+        self._compact_bar.setLayout(compact_bar_layout)
+        self._compact_bar.hide()
+
+        chat_layout.addWidget(self._compact_bar)
+
+        # 添加分割器
+        self._splitter = QSplitter(Qt.Horizontal)
+        self._right_widget = right_widget
+        self._splitter.addWidget(chat_widget)
+        self._splitter.addWidget(right_widget)
+        self._splitter.setSizes([1000, 350])
+        self._splitter.setChildrenCollapsible(False)
+        self._splitter.setHandleWidth(0)
+        self._splitter.setStretchFactor(0, 1)
+        self._splitter.setStretchFactor(1, 0)
+
+        main_layout.addWidget(self._splitter)
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
 
@@ -1323,6 +1447,108 @@ class AIAgentApp(QMainWindow):
 现在时间是 {time_str}，我已经准备好为您服务了。请告诉我您需要什么帮助吧！
 
 （对了，如果您想了解我的更多功能，可以直接问我"你能做什么"哦~）"""
+
+    def _companion_and_compact(self):
+        self.launch_companion_mode()
+        if not self._compact_bar.isVisible():
+            self.enter_compact_mode()
+
+    def _game_and_compact(self):
+        self.toggle_game_mode()
+        if not self._compact_bar.isVisible():
+            self.enter_compact_mode()
+
+    def enter_compact_mode(self):
+        """进入悬浮窗小屏模式"""
+        self._normal_size = self.size()
+        self._normal_pos = self.pos()
+        self._right_widget.hide()
+        self._compact_bar.show()
+        self.setFixedSize(520, 420)
+        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
+        self.show()
+
+    def exit_compact_mode(self):
+        """退出悬浮窗，恢复大屏"""
+        self._compact_bar.hide()
+        self._right_widget.show()
+        self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
+        self.setFixedSize(self._normal_size)
+        if hasattr(self, '_normal_pos'):
+            self.move(self._normal_pos)
+        self.show()
+
+    def _compact_game_toggle(self):
+        """精简模式下的游戏模式按钮，与主按钮保持同步"""
+        # 同步到主游戏按钮
+        self.game_mode_btn.setChecked(self._compact_game_btn.isChecked())
+        self.toggle_game_mode()
+        # 同步文字
+        self._compact_game_btn.setText(self.game_mode_btn.text())
+
+    def launch_companion_mode(self):
+        """最小化主窗口并启动 Godot 桌宠"""
+        import subprocess
+        self.showMinimized()
+        godot_exe = os.path.join(
+            os.path.dirname(__file__),
+            "plugins", "godot",
+            "Godot_v4.6.2-stable_win64.exe",
+            "Godot_v4.6.2-stable_win64.exe"
+        )
+        project_dir = os.path.join(
+            os.path.dirname(__file__),
+            "plugins", "godot", "tokai-teio"
+        )
+        if not os.path.exists(godot_exe):
+            self.add_message("系统", f"⚠️ 找不到 Godot: {godot_exe}")
+            return
+        subprocess.Popen([godot_exe, "--path", project_dir],
+                         creationflags=subprocess.DETACHED_PROCESS)
+
+    def toggle_game_mode(self):
+        """游戏模式开关：关闭时弹菜单选游戏，开启时停止监控"""
+        if not self.agent.multimodal_processor:
+            self.game_mode_btn.setChecked(False)
+            self.add_message("系统", "⚠️ 多模态处理器未初始化，无法启用游戏模式")
+            return
+
+        if not self.game_mode_btn.isChecked():
+            # 刚切换到关闭 → 停止监控
+            self.agent.multimodal_processor.stop_game_monitoring()
+            self.game_mode_btn.setText("游戏模式")
+            self.add_message("系统", "🎮 游戏模式已关闭")
+            return
+
+        # 刚切换到开启 → 弹菜单选游戏
+        games = {
+            "赛马娘": "umamusume",
+            "Minecraft": "minecraft",
+            "云顶之弈": "云顶之弈",
+        }
+        menu = QMenu(self)
+        for label, key in games.items():
+            menu.addAction(label, lambda k=key, l=label: self._start_game_monitoring(k, l))
+        # 如果用户关掉菜单不选，取消选中状态
+        menu.aboutToHide.connect(
+            lambda: self.game_mode_btn.setChecked(
+                self.game_mode_btn.text() != "游戏模式"
+            )
+        )
+        menu.exec_(self.game_mode_btn.mapToGlobal(
+            self.game_mode_btn.rect().bottomLeft()
+        ))
+
+    def _start_game_monitoring(self, game_key: str, game_label: str):
+        try:
+            self.agent.multimodal_processor.start_game_monitoring_from_config(game_key)
+            self.game_mode_btn.setChecked(True)
+            self.game_mode_btn.setText(f"游戏: {game_label}")
+            self.add_message("系统", f"🎮 游戏模式已启动：{game_label}")
+        except Exception as e:
+            self.game_mode_btn.setChecked(False)
+            self.game_mode_btn.setText("游戏模式")
+            self.add_message("系统", f"❌ 启动游戏模式失败：{e}")
 
     def toggle_multimodal(self):
         """切换多模态功能开关"""

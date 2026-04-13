@@ -12,6 +12,13 @@ import time
 from typing import Optional, Callable
 from PyQt5.QtCore import QObject, pyqtSignal
 
+_EMOTION_TAG_RE = re.compile(r'\s*\[emotion:\w+\]')
+
+try:
+    from godot_pet_client import pet as _godot_pet
+except ImportError:
+    _godot_pet = None
+
 
 class TextQueueManager(QObject):
     """流式文本队列管理器"""
@@ -34,6 +41,7 @@ class TextQueueManager(QObject):
 
     def add_streaming_text(self, text: str):
         """添加流式文本到队列"""
+        text = _EMOTION_TAG_RE.sub('', text)
         with self.lock:
             # 检查文本是否以标点符号结尾
             # 如果以标点符号结尾，说明是一个完整的句子或短语，直接发送到 TTS
@@ -178,6 +186,7 @@ class TextQueueManager(QObject):
     def finalize_text(self):
         """完成文本输入，将缓冲区中剩余的文本添加到队列"""
         with self.lock:
+            self.buffer = _EMOTION_TAG_RE.sub('', self.buffer)
             if self.buffer.strip():
                 self.text_queue.put(self.buffer)
                 print(f"📤 添加剩余文本到队列: {self.buffer}")
@@ -195,6 +204,10 @@ class TextQueueManager(QObject):
         # 启动工作线程
         self.worker_thread = threading.Thread(target=self._process_queue, daemon=True)
         self.worker_thread.start()
+
+        # 启动桌宠状态监控线程
+        threading.Thread(target=self._pet_state_monitor, daemon=True).start()
+
         print("✅ 文本队列处理已启动")
 
     def stop_processing(self):
@@ -204,6 +217,23 @@ class TextQueueManager(QObject):
             self.worker_thread.join(timeout=1.0)
         self.is_processing = False
         print("⏸️ 文本队列处理已停止")
+
+    def _pet_state_monitor(self):
+        """持续监控TTS状态，驱动桌宠talking/idle切换"""
+        import time
+        pet_talking = False
+        while not self.stop_flag:
+            tts = self.tts_manager
+            is_active = tts is not None and getattr(tts, 'is_playing_audio', False)
+            if is_active and not pet_talking:
+                if _godot_pet:
+                    _godot_pet.talking()
+                pet_talking = True
+            elif not is_active and pet_talking:
+                if _godot_pet:
+                    _godot_pet.idle()
+                pet_talking = False
+            time.sleep(0.05)
 
     def _process_queue(self):
         """处理文本队列的工作线程"""

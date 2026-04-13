@@ -337,8 +337,13 @@ class ImprovedAIAgent:
             fast_mode = self._is_simple_query(user_input)
 
         try:
-            # 检查是否启用多模态处理
-            if self.multimodal_enabled and self.multimodal_processor:
+            # 检查是否启用多模态处理（游戏监控运行时跳过 per-message 截图）
+            game_monitoring_active = (
+                self.multimodal_processor is not None and
+                self.multimodal_processor._monitor_thread is not None and
+                self.multimodal_processor._monitor_thread.is_alive()
+            )
+            if self.multimodal_enabled and self.multimodal_processor and not game_monitoring_active:
                 import time
                 multimodal_start_time = time.time()
                 
@@ -686,6 +691,15 @@ class ImprovedAIAgent:
                                     # 将文本块添加到队列，不会触发发送缓冲区中的所有文本
                                     self.text_queue_manager.add_streaming_text(chunk_content)
 
+                    # 提取情绪标签，清理 full_response，触发桌宠表情
+                    try:
+                        from godot_pet_client import pet as _godot_pet
+                        emotion, full_response = self._extract_emotion(full_response)
+                        if _godot_pet:
+                            _godot_pet.expression(emotion)
+                    except Exception:
+                        pass
+
                     # 如果有文本队列管理器，完成文本输入
                     if hasattr(self, 'text_queue_manager') and self.text_queue_manager:
                         self.text_queue_manager.finalize_text()
@@ -727,6 +741,26 @@ class ImprovedAIAgent:
                 f"（以上是屏幕实时信息，仅在与对话相关时自然融入回复，无需每次都提及）"
             )
         return prompt
+
+    def _extract_emotion(self, text: str) -> tuple:
+        """从回复中提取情绪，返回 (emotion, clean_text)。当前仅用关键词兜底。"""
+        return self._detect_emotion_by_keyword(text), text
+
+    def _detect_emotion_by_keyword(self, text: str) -> str:
+        rules = [
+            (["哈哈", "嘿嘿", "开心", "太好了", "耶", "好棒", "超棒", "大胜利"], "happy"),
+            (["呵呵", "嗯嗯", "好的", "了解", "没问题", "好哒"], "smile"),
+            (["讨厌", "生气", "哼", "烦死了", "可恶", "气气"], "angry"),
+            (["呜呜", "难过", "可惜", "遗憾", "伤心", "泪"], "sad"),
+            (["哇", "真的吗", "居然", "没想到", "惊", "竟然"], "surprised"),
+            (["就是说嘛", "当然", "本大人", "厉害吧", "看本大人"], "smug"),
+            (["不知道", "有点", "嗯…", "那个", "害羞", "脸红"], "dere"),
+            (["冲", "加油", "跑起来", "全力", "燃", "超越"], "excited"),
+        ]
+        for keywords, emotion in rules:
+            if any(kw in text for kw in keywords):
+                return emotion
+        return "normal"
 
     async def execute_tool_async(
         self,

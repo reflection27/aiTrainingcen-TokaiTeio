@@ -11,6 +11,8 @@ from PIL import Image
 
 try:
     import win32gui
+    import win32ui
+    import win32con
     WIN32_AVAILABLE = True
 except ImportError:
     WIN32_AVAILABLE = False
@@ -188,8 +190,32 @@ class ScreenCapture:
             raise ValueError(f"窗口区域无效: left={left}, top={top}, "
                              f"right={right}, bottom={bottom}")
 
-        screenshot = pyautogui.screenshot(region=(left, top, width, height))
-        screenshot.save(save_path)
+        # 用 PrintWindow 直接从窗口 DC 取内容，避免全屏游戏截到整个屏幕
+        try:
+            hwnd_dc = win32gui.GetWindowDC(hwnd)
+            mfc_dc = win32ui.CreateDCFromHandle(hwnd_dc)
+            save_dc = mfc_dc.CreateCompatibleDC()
+            bitmap = win32ui.CreateBitmap()
+            bitmap.CreateCompatibleBitmap(mfc_dc, width, height)
+            save_dc.SelectObject(bitmap)
+            # PW_RENDERFULLCONTENT=2 支持硬件加速窗口（游戏常用）
+            win32gui.PrintWindow(hwnd, save_dc.GetSafeHdc(), 2)
+            bmp_info = bitmap.GetInfo()
+            bmp_data = bitmap.GetBitmapBits(True)
+            img = Image.frombuffer(
+                "RGB",
+                (bmp_info["bmWidth"], bmp_info["bmHeight"]),
+                bmp_data, "raw", "BGRX", 0, 1
+            )
+            img.save(save_path)
+            save_dc.DeleteDC()
+            mfc_dc.DeleteDC()
+            win32gui.ReleaseDC(hwnd, hwnd_dc)
+            win32gui.DeleteObject(bitmap.GetHandle())
+        except Exception:
+            # PrintWindow 失败时退回 pyautogui 区域截图
+            screenshot = pyautogui.screenshot(region=(left, top, width, height))
+            screenshot.save(save_path)
 
         return save_path
 
