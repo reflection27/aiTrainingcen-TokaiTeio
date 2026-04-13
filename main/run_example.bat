@@ -24,7 +24,7 @@ echo STT程序已启动，识别到的文本将自动发送到主程序
 echo 按Ctrl+C退出程序
 echo.
 
-python example_realtimestt.py
+python realtimestt_process.py
 
 echo.
 echo ========================================

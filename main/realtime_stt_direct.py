@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 RealtimeSTT直接集成模块
-直接集成example_realtimestt.py的实时语音识别功能
+直接集成realtimestt_process.py的实时语音识别功能
 """
 import sys
 import os

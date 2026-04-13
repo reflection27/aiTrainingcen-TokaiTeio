@@ -62,7 +62,7 @@ flowchart TD
 <div class="diagram-box">
 <pre class="mermaid">
 flowchart LR
-    A([用户说话]) --> B[RealtimeSTT\nexample_realtimestt.py\n独立进程]
+    A([用户说话]) --> B[RealtimeSTT\nrealtimestt_process.py\n独立进程]
     B -->|POST /api/text_input\nlocalhost:5000| C[HTTP 服务器\nmain.py]
     C --> D[QApplication.postEvent\n自定义 TextEvent]
     D --> E[Qt 事件过滤器\n主线程接收]
