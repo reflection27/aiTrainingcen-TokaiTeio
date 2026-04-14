@@ -57,6 +57,19 @@ func _on_command(cmd: Dictionary) -> void:
 			var duration: float = cmd.get("duration", 0.3)
 			ok = character.set_expression(preset, duration)
 
+		# ── 心情动作：{"cmd":"play_action","preset":"happy"}
+		"play_action":
+			var preset: String = cmd.get("preset", cmd.get("name", "normal"))
+			character.play_action(preset)
+
+		# ── 眼睛高光调参：{"cmd":"eye_highlight","param":"hl1_dir_x","value":0.3}
+		# param 可选：hl1_dir_x/y  hl1_sharpness  hl1_strength
+		#             hl2_dir_x/y  hl2_sharpness  hl2_strength  highlight_alpha
+		"eye_highlight":
+			var param: String = cmd.get("param", "")
+			var value: float   = cmd.get("value", 0.0)
+			character.set_eye_highlight_param(param, value)
+
 		# ── 直接操作单个 BlendShape：{"cmd":"blend_shape","name":"Mouth_4_0(WaraiA)[M_Face]","value":0.8}
 		"blend_shape":
 			var name: String = cmd.get("name", "")
@@ -68,6 +81,17 @@ func _on_command(cmd: Dictionary) -> void:
 		"play_animation":
 			var name: String = cmd.get("name", "")
 			ok = character.play_animation(name)
+
+		# ── 角色整体绕 Z 轴旋转：{"cmd":"rotate_z","angle":30}
+		"rotate_z":
+			var angle: float = cmd.get("angle", 0.0)
+			character.rotation_degrees.z = angle
+
+		# ── 尾巴下垂调参（调好后填入 action_happy.gd）────────────────
+		# {"cmd":"tail_droop","angle":30}  正值向后下垂，负值向前翘
+		"tail_droop":
+			var angle: float = cmd.get("angle", 0.0)
+			character.set_tail_droop(angle)
 
 		# ── 复位姿态 ──────────────────────────────────────────────
 		"reset_pose":

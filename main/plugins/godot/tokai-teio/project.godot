@@ -11,18 +11,18 @@ config_version=5
 [application]
 
 config/name="TokaiTeio"
+run/main_scene="res://main.tscn"
 config/features=PackedStringArray("4.6", "Forward Plus")
 config/icon="res://icon.svg"
-run/main_scene="res://main.tscn"
 
 [display]
 
 window/size/viewport_width=380
 window/size/viewport_height=850
+window/size/resizable=false
+window/size/borderless=true
 window/size/transparent=true
 window/per_pixel_transparency/allowed=true
-window/size/borderless=true
-window/size/resizable=false
 
 [physics]
 

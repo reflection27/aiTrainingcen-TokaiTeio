@@ -137,10 +137,13 @@ class ImprovedMemorySystem:
 
                 def load_model():
                     """在线程池中加载嵌入模型"""
+                    # 检测本地缓存是否存在，存在则跳过网络请求
+                    model_cache = cache_folder / "models--BAAI--bge-small-zh-v1.5"
+                    local_only = model_cache.exists()
                     return HuggingFaceEmbeddings(
                         model_name="BAAI/bge-small-zh-v1.5",
                         cache_folder=str(cache_folder),
-                        model_kwargs={"trust_remote_code": True},
+                        model_kwargs={"trust_remote_code": True, "local_files_only": local_only},
                         encode_kwargs={"normalize_embeddings": True}
                     )
 
@@ -209,10 +212,12 @@ class ImprovedMemorySystem:
             cache_folder = self.base_path / "model_cache"
             cache_folder.mkdir(parents=True, exist_ok=True)
 
+            model_cache = cache_folder / "models--BAAI--bge-small-zh-v1.5"
+            local_only = model_cache.exists()
             self.embeddings = HuggingFaceEmbeddings(
                 model_name="BAAI/bge-small-zh-v1.5",
                 cache_folder=str(cache_folder),
-                model_kwargs={"trust_remote_code": True},
+                model_kwargs={"trust_remote_code": True, "local_files_only": local_only},
                 encode_kwargs={"normalize_embeddings": True}
             )
 

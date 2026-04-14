@@ -1294,17 +1294,22 @@ class AIAgentApp(QMainWindow):
         print(f"✅ custom_event函数已调用")
 
     def sync_time(self):
-        """同步网络时间"""
-        try:
-            import requests
-            response = requests.get('http://worldtimeapi.org/api/timezone/Asia/Shanghai', timeout=5)
-            data = response.json()
-            current_time = datetime.datetime.fromisoformat(data['datetime'].replace('Z', '+00:00'))
-            time_str = current_time.strftime("%H:%M:%S")
-            self.ai_time.setText(time_str)
-        except:
-            # 如果网络时间同步失败，使用本地时间
-            self.ai_time.setText(datetime.datetime.now().strftime("%H:%M:%S"))
+        """在后台线程同步网络时间，避免阻塞主线程"""
+        def _fetch():
+            try:
+                import requests
+                response = requests.get(
+                    'http://worldtimeapi.org/api/timezone/Asia/Shanghai', timeout=3)
+                data = response.json()
+                current_time = datetime.datetime.fromisoformat(
+                    data['datetime'].replace('Z', '+00:00'))
+                time_str = current_time.strftime("%H:%M:%S")
+            except Exception:
+                time_str = datetime.datetime.now().strftime("%H:%M:%S")
+            # 回到主线程更新 UI
+            QTimer.singleShot(0, lambda: self.ai_time.setText(time_str))
+
+        threading.Thread(target=_fetch, daemon=True).start()
 
     def update_status(self):
         """更新状态"""
@@ -1449,9 +1454,13 @@ class AIAgentApp(QMainWindow):
 （对了，如果您想了解我的更多功能，可以直接问我"你能做什么"哦~）"""
 
     def _companion_and_compact(self):
-        self.launch_companion_mode()
+        # 1. 先切紧凑布局
         if not self._compact_bar.isVisible():
             self.enter_compact_mode()
+        # 2. 最小化
+        self.showMinimized()
+        # 3. 启动 Godot（不再 showMinimized，直接启动进程）
+        self._launch_godot_process()
 
     def _game_and_compact(self):
         self.toggle_game_mode()
@@ -1460,36 +1469,52 @@ class AIAgentApp(QMainWindow):
 
     def enter_compact_mode(self):
         """进入悬浮窗小屏模式"""
+        if self._compact_bar.isVisible():
+            return
         self._normal_size = self.size()
         self._normal_pos = self.pos()
         self._right_widget.hide()
         self._compact_bar.show()
+        # setWindowFlag 不重建窗口句柄，避免任务栏条目失效
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setFixedSize(520, 420)
-        self.setWindowFlags(self.windowFlags() | Qt.WindowStaysOnTopHint)
         self.show()
 
     def exit_compact_mode(self):
         """退出悬浮窗，恢复大屏"""
         self._compact_bar.hide()
         self._right_widget.show()
-        self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, False)
         self.setFixedSize(self._normal_size)
         if hasattr(self, '_normal_pos'):
             self.move(self._normal_pos)
-        self.show()
+        if self.isMinimized():
+            self.showNormal()
+        else:
+            self.show()
+
+    def changeEvent(self, event):
+        """处理最小化恢复，确保任务栏点击能正常唤起窗口"""
+        from PyQt5.QtCore import QEvent
+        if event.type() == QEvent.WindowStateChange:
+            was_minimized = bool(event.oldState() & Qt.WindowMinimized)
+            is_minimized  = bool(self.windowState() & Qt.WindowMinimized)
+            # 只在"从最小化恢复"时处理，避免切换窗口时抢焦点
+            if was_minimized and not is_minimized:
+                self.show()
+                self.raise_()
+                self.activateWindow()
+        super().changeEvent(event)
 
     def _compact_game_toggle(self):
         """精简模式下的游戏模式按钮，与主按钮保持同步"""
-        # 同步到主游戏按钮
         self.game_mode_btn.setChecked(self._compact_game_btn.isChecked())
-        self.toggle_game_mode()
-        # 同步文字
+        self.toggle_game_mode(source_btn=self._compact_game_btn)
         self._compact_game_btn.setText(self.game_mode_btn.text())
 
-    def launch_companion_mode(self):
-        """最小化主窗口并启动 Godot 桌宠"""
+    def _launch_godot_process(self):
+        """启动 Godot 桌宠进程"""
         import subprocess
-        self.showMinimized()
         godot_exe = os.path.join(
             os.path.dirname(__file__),
             "plugins", "godot",
@@ -1506,7 +1531,12 @@ class AIAgentApp(QMainWindow):
         subprocess.Popen([godot_exe, "--path", project_dir],
                          creationflags=subprocess.DETACHED_PROCESS)
 
-    def toggle_game_mode(self):
+    def launch_companion_mode(self):
+        """最小化主窗口并启动 Godot 桌宠"""
+        self.showMinimized()
+        self._launch_godot_process()
+
+    def toggle_game_mode(self, source_btn=None):
         """游戏模式开关：关闭时弹菜单选游戏，开启时停止监控"""
         if not self.agent.multimodal_processor:
             self.game_mode_btn.setChecked(False)
@@ -1520,7 +1550,9 @@ class AIAgentApp(QMainWindow):
             self.add_message("系统", "🎮 游戏模式已关闭")
             return
 
-        # 刚切换到开启 → 弹菜单选游戏
+        # 菜单弹出位置：优先用传入的按钮，否则用主按钮
+        anchor = source_btn if (source_btn and source_btn.isVisible()) else self.game_mode_btn
+
         games = {
             "赛马娘": "umamusume",
             "Minecraft": "minecraft",
@@ -1529,15 +1561,12 @@ class AIAgentApp(QMainWindow):
         menu = QMenu(self)
         for label, key in games.items():
             menu.addAction(label, lambda k=key, l=label: self._start_game_monitoring(k, l))
-        # 如果用户关掉菜单不选，取消选中状态
         menu.aboutToHide.connect(
             lambda: self.game_mode_btn.setChecked(
                 self.game_mode_btn.text() != "游戏模式"
             )
         )
-        menu.exec_(self.game_mode_btn.mapToGlobal(
-            self.game_mode_btn.rect().bottomLeft()
-        ))
+        menu.exec_(anchor.mapToGlobal(anchor.rect().bottomLeft()))
 
     def _start_game_monitoring(self, game_key: str, game_label: str):
         try:
