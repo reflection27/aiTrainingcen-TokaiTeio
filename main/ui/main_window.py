@@ -10,10 +10,10 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QFont, QPixmap
 
-from improved_ai_agent import ImprovedAIAgent
-from ui_dialogs import MemoryLakeDialog, MCPToolsDialog
-from settings_dialog import SettingsDialog
-from config import load_config
+from core.improved_ai_agent import ImprovedAIAgent
+from ui.ui_dialogs import MemoryDialog
+from ui.settings_dialog import SettingsDialog
+from core.config import load_config
 
 class AIAgentApp(QMainWindow):
     """东海帝王AI担当主窗口"""
@@ -62,7 +62,7 @@ class AIAgentApp(QMainWindow):
                 return
 
             # 初始化ASR集成模块
-            from asr_integration import ASRIntegration
+            from core.asr_integration import ASRIntegration
             self.asr_integration = ASRIntegration(self.config)
 
             # 连接信号
@@ -422,7 +422,7 @@ class AIAgentApp(QMainWindow):
         
         # 加载东海帝王图片
         try:
-            pixmap = QPixmap("TokaiTeio.png")
+            pixmap = QPixmap(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "TokaiTeio.png"))
             if not pixmap.isNull():
                 # 重新计算适合增加高度后的9:16比例尺寸
                 # 系统状态栏宽度固定为320px，东海帝王图片宽度也要320px
@@ -512,31 +512,8 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
             }
         """)
-        memory_btn.clicked.connect(self.open_memory_lake)
+        memory_btn.clicked.connect(self.open_memory)
         
-        # MCP工具按钮
-        mcp_btn = QPushButton("MCP工具")
-        mcp_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
-                color: #FFFFFF;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 15px;
-                font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
-                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
-            }
-        """)
-        mcp_btn.clicked.connect(self.open_mcp_tools)
-
         # 测试按钮
         test_btn = QPushButton("测试")
         test_btn.setStyleSheet("""
@@ -683,7 +660,6 @@ class AIAgentApp(QMainWindow):
 
         button_layout.addWidget(settings_btn)
         button_layout.addWidget(memory_btn)
-        button_layout.addWidget(mcp_btn)
         button_layout.addWidget(test_btn)
         button_layout.addWidget(test_event_btn)
         button_layout.addWidget(self.multimodal_btn)
@@ -962,7 +938,7 @@ class AIAgentApp(QMainWindow):
                 self.response_ready.emit("STREAM_CHUNK:" + chunk)
 
             # 使用异步处理，传入流式回调函数
-            response = await self.agent.process_command_async(user_input, stream_callback=stream_callback)
+            response = await self.agent.process_command_async(user_input, session_id=self.agent.current_session_id, stream_callback=stream_callback)
 
             print(f"✅ AI响应获取成功: {response[:50]}...")
 
@@ -986,7 +962,7 @@ class AIAgentApp(QMainWindow):
             print(f"🔄 开始处理AI响应: {user_input}")
             
             # 获取AI响应
-            response = self.agent.process_command(user_input)
+            response = self.agent.process_command(user_input, session_id=self.agent.current_session_id)
             
             print(f"✅ AI响应获取成功: {response[:50]}...")
             
@@ -1245,15 +1221,10 @@ class AIAgentApp(QMainWindow):
         # 设置保存后，重新应用透明度设置
         self.apply_transparency()
 
-    def open_memory_lake(self):
+    def open_memory(self):
         """打开记忆系统窗口"""
-        memory_dialog = MemoryLakeDialog(self.agent.memory_lake, self)
+        memory_dialog = MemoryDialog(self.agent.memory, agent=self.agent, parent=self)
         memory_dialog.exec_()
-
-    def open_mcp_tools(self):
-        """打开MCP工具窗口"""
-        mcp_dialog = MCPToolsDialog(self.agent.mcp_tools, self)
-        mcp_dialog.exec_()
 
     def test_add_message(self):
         """测试添加消息到聊天历史"""
@@ -1354,74 +1325,18 @@ class AIAgentApp(QMainWindow):
             event.accept()
 
     def save_unsaved_conversations(self):
-        """保存未保存的会话记录到记忆系统"""
-        try:
-            # 检查开发者模式，如果开启则不保存
-            if getattr(self.agent, 'developer_mode', False):
-                print("🔧 开发者模式已开启，跳过会话记录保存")
-                return
-            
-            # 获取当前会话中的对话记录
-            session_conversations = getattr(self.agent, 'session_conversations', [])
-            
-            if not session_conversations:
-                print("📝 没有需要保存的会话记录")
-                return
-            
-            print(f"📝 开始保存 {len(session_conversations)} 条会话记录到记忆系统")
-            
-            # 🚀 修复：过滤出未保存的对话记录
-            unsaved_conversations = []
-            for conv in session_conversations:
-                # 检查对话是否已经被保存过（通过检查saved标记）
-                if not conv.get('saved', False):
-                    unsaved_conversations.append(conv)
-            
-            if not unsaved_conversations:
-                print("📝 所有对话记录都已经保存过了")
-                return
-            
-            print(f"📝 找到 {len(unsaved_conversations)} 条未保存的对话记录")
-            
-            # 🚀 修复：遍历未保存的对话记录，将它们添加到记忆系统中
-            for conv in unsaved_conversations:
-                user_input = conv.get('user_input', '')
-                ai_response = conv.get('ai_response', '')
-                
-                if user_input and ai_response:
-                    # 添加到记忆系统的当前会话中
-                    self.agent.memory_lake.add_conversation(user_input, ai_response, self.agent.developer_mode, self.agent._mark_conversation_as_saved)
-            
-            # 🚀 修复：强制保存当前会话（即使不足3条）
-            if self.agent.memory_lake.current_conversation:
-                topic = self.agent.memory_lake.summarize_and_save_topic(force_save=True)
-                if topic:
-                    print(f"✅ 退出时保存会话主题: {topic}")
-                    # 🚀 修复：在成功保存后，标记所有对话为已保存
-                    for conv in unsaved_conversations:
-                        conv['saved'] = True
-                else:
-                    print("✅ 退出时保存会话记录完成")
-                    # 🚀 修复：即使保存失败，也标记为已保存，避免重复尝试
-                    for conv in unsaved_conversations:
-                        conv['saved'] = True
-            
-            # 🚀 修复：不清空session_conversations，只标记为已保存
-            # 这样可以避免重复保存，同时保留对话历史
-            
-        except Exception as e:
-            print(f"❌ 保存会话记录失败: {str(e)}")
-            raise
+        """ImprovedMemorySystem 在每次对话时已自动保存，此方法保留为空"""
+        pass
     
     def check_first_run_and_introduce(self):
         """检查是否是第一次运行，如果是则进行自我介绍"""
         try:
             # 检查记忆系统中的记忆条数
-            memory_stats = self.agent.memory_lake.get_memory_stats()
-            total_topics = memory_stats.get("total_topics", 0)
-            
-            # 如果记忆条数为0，说明是第一次运行
-            if total_topics == 0:
+            memory_stats = self.agent.memory.get_memory_stats()
+            total_conversations = memory_stats.get("total_conversations", 0)
+
+            # 如果对话条数为0，说明是第一次运行
+            if total_conversations == 0:
                 # 生成自我介绍内容
                 introduction = self.generate_introduction()
                 
@@ -1515,14 +1430,15 @@ class AIAgentApp(QMainWindow):
     def _launch_godot_process(self):
         """启动 Godot 桌宠进程"""
         import subprocess
+        _root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         godot_exe = os.path.join(
-            os.path.dirname(__file__),
+            _root,
             "plugins", "godot",
             "Godot_v4.6.2-stable_win64.exe",
             "Godot_v4.6.2-stable_win64.exe"
         )
         project_dir = os.path.join(
-            os.path.dirname(__file__),
+            _root,
             "plugins", "godot", "tokai-teio"
         )
         if not os.path.exists(godot_exe):

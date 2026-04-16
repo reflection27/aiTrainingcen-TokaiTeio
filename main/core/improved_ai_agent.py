@@ -9,8 +9,8 @@ import asyncio
 import os
 from typing import Dict, Optional, List
 from openai import AsyncOpenAI
-from improved_memory import ImprovedMemorySystem
-from tool_manager import ToolManager, BaseTool
+from memory.improved_memory import ImprovedMemorySystem
+from core.tool_manager import ToolManager, BaseTool
 
 class ImprovedAIAgent:
     """改进的AI Agent（整合异步处理和模块化架构）"""
@@ -23,8 +23,11 @@ class ImprovedAIAgent:
 
         # 初始化异步记忆系统
         self.memory = ImprovedMemorySystem()
-        # 添加memory_lake属性以兼容现有代码
-        self.memory_lake = self.memory
+
+        # 会话管理：启动时沿用最近一次会话，没有则新建
+        import uuid
+        latest = self.memory.get_latest_session_id()
+        self.current_session_id = latest if latest else str(uuid.uuid4())
 
         # 预热向量数据库模型
         self._warmup_vector_db()
@@ -32,8 +35,6 @@ class ImprovedAIAgent:
         # 初始化工具管理器
         self.tool_manager = ToolManager()
         self._register_default_tools()
-        # 添加mcp_tools属性以兼容现有代码
-        self.mcp_tools = self.tool_manager
 
         # 初始化异步OpenAI客户端
         import os
@@ -97,7 +98,7 @@ class ImprovedAIAgent:
                 vits_weights_path = config.get("gpt_sovits_vits_weights", "")
 
                 print(f"🔍 初始化GPT-SoVITS TTS管理器，API地址: {gpt_sovits_api_url}, API类型: {gpt_sovits_api_type}, 参考音频: {ref_audio_path}")
-                from gpt_sovits_unified import UnifiedGPTSoVITS
+                from core.gpt_sovits_unified import UnifiedGPTSoVITS
                 self.tts_manager = UnifiedGPTSoVITS(gpt_sovits_api_url, ref_audio_path, gpt_sovits_api_type)
                 self.tts_engine = "gpt_sovits"
                 print(f"✅ GPT-SoVITS TTS管理器初始化成功，可用性: {self.tts_manager.is_available()}")
@@ -115,7 +116,7 @@ class ImprovedAIAgent:
                 azure_key = config.get("azure_tts_key", "")
                 azure_region = config.get("azure_region", "eastasia")
                 if azure_key:
-                    from tts_manager import TTSManager
+                    from core.tts_manager import TTSManager
                     self.tts_manager = TTSManager(azure_key, azure_region)
                     self.tts_engine = "azure"
                     print("✅ Azure TTS管理器初始化成功")
@@ -131,7 +132,7 @@ class ImprovedAIAgent:
     def _init_text_queue_manager(self):
         """初始化文本队列管理器"""
         try:
-            from text_queue_manager import TextQueueManager
+            from core.text_queue_manager import TextQueueManager
             print(f"🔍 初始化文本队列管理器，tts_manager={self.tts_manager is not None}")
             self.text_queue_manager = TextQueueManager(tts_manager=self.tts_manager)
             self.text_queue_manager.start_processing()
@@ -142,7 +143,7 @@ class ImprovedAIAgent:
 
     def _register_default_tools(self):
         """注册默认工具"""
-        from tool_manager import WeatherTool, SearchTool, MusicTool
+        from core.tool_manager import WeatherTool, SearchTool, MusicTool
 
         self.tool_manager.register_tool(WeatherTool(), "system")
         self.tool_manager.register_tool(SearchTool(), "search")
@@ -555,6 +556,13 @@ class ImprovedAIAgent:
                     pass
             save_task.add_done_callback(_cleanup_task)
 
+            # 自动知识提取（后台，不阻塞响应）
+            extract_task = loop.create_task(
+                self._extract_knowledge(user_input, response)
+            )
+            self.background_tasks.add(extract_task)
+            extract_task.add_done_callback(lambda t: self.background_tasks.discard(t))
+
             # 缓存响应（带大小限制）
             if len(self.response_cache) >= self.max_cache_size:
                 # 删除最少使用的缓存项
@@ -693,7 +701,7 @@ class ImprovedAIAgent:
 
                     # 提取情绪标签，清理 full_response，触发桌宠表情
                     try:
-                        from godot_pet_client import pet as _godot_pet
+                        from core.godot_pet_client import pet as _godot_pet
                         emotion, full_response = self._extract_emotion(full_response)
                         if _godot_pet:
                             _godot_pet.expression(emotion)
@@ -816,7 +824,7 @@ class ImprovedAIAgent:
 
     def print_performance_stats(self):
         """打印性能统计信息"""
-        from improved_memory import perf_tracker
+        from memory.improved_memory import perf_tracker
         perf_tracker.print_stats()
 
     def apply_tts_model_weights(self):
@@ -859,6 +867,34 @@ class ImprovedAIAgent:
 
         return self.active_sessions[session_id]
 
+    async def _extract_knowledge(self, user_input: str, ai_response: str):
+        """从对话中自动提取值得长期记忆的知识点，存入知识库"""
+        try:
+            prompt = (
+                "从以下对话中提取用户透露的重要个人信息、偏好、习惯或明确的事实性知识点。"
+                "每条独立一行，不加编号。如果没有值得记录的内容，只回复\"无\"。\n\n"
+                f"用户: {user_input}\nAI: {ai_response}\n\n提取的知识点:"
+            )
+            resp = await self.client.chat.completions.create(
+                model=self.config.get("selected_model", "deepseek-chat"),
+                messages=[{"role": "user", "content": prompt}],
+                max_tokens=200,
+                temperature=0.2
+            )
+            result = resp.choices[0].message.content.strip()
+            if result and result != "无":
+                from datetime import datetime
+                for line in result.splitlines():
+                    line = line.strip()
+                    if line and line != "无":
+                        await self.memory.add_knowledge_async(
+                            line,
+                            {"source": "auto", "timestamp": datetime.now().isoformat()}
+                        )
+                        print(f"📚 知识库新增: {line}")
+        except Exception as e:
+            print(f"⚠️ 知识提取失败: {e}")
+
     async def add_knowledge_async(
         self,
         text: str,
@@ -881,6 +917,18 @@ class ImprovedAIAgent:
         # 暂时返回占位响应
         return f"已收到图片: {file_path}，图片分析功能正在开发中..."
     
+    def new_session(self) -> str:
+        """新建会话，返回新的 session_id"""
+        import uuid
+        self.current_session_id = str(uuid.uuid4())
+        print(f"🆕 新建会话: {self.current_session_id}")
+        return self.current_session_id
+
+    def switch_session(self, session_id: str):
+        """切换到指定会话"""
+        self.current_session_id = session_id
+        print(f"🔄 切换会话: {session_id}")
+
     def update_tts_config(self, config: Dict):
         """更新TTS配置"""
         try:

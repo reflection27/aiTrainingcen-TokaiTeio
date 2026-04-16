@@ -12,6 +12,7 @@ import platform
 import datetime
 from typing import Dict, List, Any, Optional
 
+
 class LocalMCPServer:
     """本地MCP服务器 - 简化版本"""
     
@@ -29,9 +30,6 @@ class LocalMCPServer:
             "calculate": self.calculate,
         }
         
-        # 加载自定义工具
-        self.load_custom_tools()
-    
     def get_system_info(self) -> str:
         """获取系统信息"""
         info = {
@@ -259,85 +257,6 @@ class LocalMCPServer:
             }
         return {}
     
-    def load_custom_tools(self):
-        """加载自定义工具"""
-        try:
-            if os.path.exists("custom_tools.json"):
-                with open("custom_tools.json", "r", encoding="utf-8") as f:
-                    custom_tools = json.load(f)
-                    for tool_name, tool_info in custom_tools.items():
-                        if tool_info.get("type") == "custom":
-                            # 动态创建工具函数
-                            self.create_custom_tool(tool_name, tool_info)
-        except Exception as e:
-            print(f"加载自定义工具失败: {str(e)}")
-    
-    def create_custom_tool(self, tool_name, tool_info):
-        """创建自定义工具"""
-        try:
-            # 创建工具函数的命名空间
-            namespace = {}
-            
-            # 执行工具代码
-            exec(tool_info["code"], namespace)
-            
-            # 创建包装函数
-            def tool_wrapper(**kwargs):
-                # 根据工具名称和参数判断调用哪个函数
-                if tool_name == "智能文件分析":
-                    # 文件分析工具
-                    if 'file_path' in kwargs:
-                        if 'analyze_file_content' in namespace:
-                            # 直接调用analyze_file_content返回JSON格式
-                            return namespace['analyze_file_content'](kwargs['file_path'])
-                        elif 'upload_and_analyze_file' in namespace:
-                            return namespace['upload_and_analyze_file'](kwargs['file_path'])
-                        else:
-                            return "文件分析功能未找到"
-                    else:
-                        return "请提供file_path参数"
-                elif 'location1' in kwargs and 'location2' in kwargs:
-                    # 调用距离计算函数
-                    if 'calculate_distance' in namespace:
-                        return namespace['calculate_distance'](kwargs['location1'], kwargs['location2'])
-                elif 'keyword' in kwargs:
-                    # 调用兴趣点搜索函数
-                    if 'search_poi' in namespace:
-                        city = kwargs.get('city', '北京')
-                        return namespace['search_poi'](kwargs['keyword'], city)
-                elif 'city' in kwargs and 'keyword' not in kwargs:
-                    # 调用天气预报函数
-                    if 'get_weather_forecast' in namespace:
-                        return namespace['get_weather_forecast'](kwargs['city'])
-                else:
-                    return f"参数错误，请提供正确的参数。可用功能：距离计算(location1, location2)、兴趣点搜索(keyword, city)、天气预报(city)、文件分析(file_path)"
-            
-            # 将包装函数添加到工具列表
-            self.tools[tool_name] = tool_wrapper
-            
-        except Exception as e:
-            print(f"创建自定义工具 {tool_name} 失败: {str(e)}")
-    
-    def reload_custom_tools(self):
-        """重新加载自定义工具"""
-        # 移除现有的自定义工具
-        custom_tools = self.get_custom_tools_config()
-        for tool_name in custom_tools.keys():
-            if tool_name in self.tools:
-                del self.tools[tool_name]
-        
-        # 重新加载
-        self.load_custom_tools()
-    
-    def get_custom_tools_config(self):
-        """获取自定义工具配置"""
-        try:
-            if os.path.exists("custom_tools.json"):
-                with open("custom_tools.json", "r", encoding="utf-8") as f:
-                    return json.load(f)
-        except:
-            pass
-        return {}
 
 if __name__ == "__main__":
     server = LocalMCPServer()

@@ -7,8 +7,9 @@
 import json
 import os
 
-# 配置文件路径
-CONFIG_FILE = "ai_agent_config.json"
+# 配置文件路径（相对 __file__ 定位，避免依赖工作目录）
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+CONFIG_FILE = os.path.join(_ROOT, "ai_agent_config.json")
 
 def load_config():
     """加载配置"""

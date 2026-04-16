@@ -12,8 +12,8 @@ from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QLine
 from PyQt5.QtCore import Qt, QTimer
 from PyQt5.QtGui import QIcon, QPalette, QColor
 
-from config import save_config
-from utils import scan_windows_apps
+from core.config import save_config
+from core.utils import scan_windows_apps
 
 class SettingsDialog(QDialog):
     """设置对话框"""

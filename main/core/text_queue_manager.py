@@ -15,7 +15,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 _EMOTION_TAG_RE = re.compile(r'\s*\[emotion:\w+\]')
 
 try:
-    from godot_pet_client import pet as _godot_pet
+    from core.godot_pet_client import pet as _godot_pet
 except ImportError:
     _godot_pet = None
 

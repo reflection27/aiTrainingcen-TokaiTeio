@@ -608,3 +608,74 @@ class ImprovedMemorySystem:
             "vector_db_path": str(self.vector_db_path),
             "chat_db_path": str(self.chat_db_path)
         }
+
+    def get_all_sessions(self) -> List[Dict]:
+        """获取所有会话列表，按最新消息时间倒序"""
+        with sqlite3.connect(self.chat_db_path) as conn:
+            rows = conn.execute(
+                """SELECT session_id, COUNT(*) as count,
+                          MIN(timestamp) as start_time,
+                          MAX(timestamp) as last_time
+                   FROM conversations
+                   GROUP BY session_id
+                   ORDER BY last_time DESC"""
+            ).fetchall()
+        return [
+            {"session_id": r[0], "count": r[1],
+             "start_time": r[2], "last_time": r[3]}
+            for r in rows
+        ]
+
+    def get_session_conversations(self, session_id: str, limit: int = 500) -> List[Dict]:
+        """获取指定会话的所有对话"""
+        with sqlite3.connect(self.chat_db_path) as conn:
+            rows = conn.execute(
+                """SELECT id, timestamp, user_input, ai_response
+                   FROM conversations
+                   WHERE session_id = ?
+                   ORDER BY timestamp DESC LIMIT ?""",
+                (session_id, limit)
+            ).fetchall()
+        return [
+            {"id": r[0], "timestamp": r[1],
+             "user_input": r[2], "ai_response": r[3]}
+            for r in rows
+        ]
+
+    def get_latest_session_id(self) -> Optional[str]:
+        """获取最近一次使用的会话 ID，如果没有则返回 None"""
+        with sqlite3.connect(self.chat_db_path) as conn:
+            row = conn.execute(
+                "SELECT session_id FROM conversations ORDER BY timestamp DESC LIMIT 1"
+            ).fetchone()
+        return row[0] if row else None
+
+    def get_all_knowledge(self, limit: int = 200) -> List[str]:
+        """获取所有知识条目（用于 UI 浏览）"""
+        try:
+            all_docs = self.vectorstore.similarity_search("知识", k=limit)
+            return [
+                doc.page_content
+                for doc in all_docs
+                if not doc.metadata.get("__placeholder__") and doc.page_content.strip()
+            ]
+        except Exception:
+            return []
+
+    def delete_knowledge_by_content(self, content: str) -> bool:
+        """根据完整内容删除知识条目（供 UI 调用）"""
+        return self.delete_knowledge(content)
+
+    def delete_conversation(self, conv_id: int) -> bool:
+        """删除单条对话记录"""
+        with sqlite3.connect(self.chat_db_path) as conn:
+            cursor = conn.execute("DELETE FROM conversations WHERE id = ?", (conv_id,))
+            return cursor.rowcount > 0
+
+    def delete_session(self, session_id: str) -> int:
+        """删除整个会话的所有对话，返回删除条数"""
+        with sqlite3.connect(self.chat_db_path) as conn:
+            cursor = conn.execute(
+                "DELETE FROM conversations WHERE session_id = ?", (session_id,)
+            )
+            return cursor.rowcount

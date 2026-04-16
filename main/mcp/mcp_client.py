@@ -92,7 +92,7 @@ class LocalMCPClient:
     """本地MCP客户端，直接调用本地函数"""
     
     def __init__(self):
-        from mcp_server import LocalMCPServer
+        from mcp.mcp_server import LocalMCPServer
         self.server = LocalMCPServer()
     
     async def call_tool(self, tool_name: str, **kwargs) -> str:

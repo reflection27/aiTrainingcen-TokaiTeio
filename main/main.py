@@ -35,9 +35,9 @@ def load_env():
 load_env()
 
 # 导入自定义模块
-from config import load_config
-from improved_ai_agent import ImprovedAIAgent
-from main_window import AIAgentApp
+from core.config import load_config
+from core.improved_ai_agent import ImprovedAIAgent
+from ui.main_window import AIAgentApp
 
 # 全局变量，用于存储主窗口实例
 main_window_instance = None
@@ -147,7 +147,7 @@ async def preload_models():
     try:
         # 1. 预加载嵌入模型
         print("📥 正在预加载嵌入模型...")
-        from improved_memory import ImprovedMemorySystem
+        from memory.improved_memory import ImprovedMemorySystem
         await ImprovedMemorySystem.initialize_embeddings()
         print("✅ 嵌入模型预加载完成")
 

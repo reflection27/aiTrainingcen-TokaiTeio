@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(grep:*)",
+      "Bash(mkdir:*)",
+      "Bash(mv improved_ai_agent.py tool_manager.py config.py utils.py text_queue_manager.py gpt_sovits_unified.py tts_manager.py api_v2_client.py asr_integration.py realtime_stt_direct.py realtimestt_process.py godot_pet_client.py improved_ocr.py core/)",
+      "Bash(mv improved_memory.py memory_lake.py memory_summary_agent.py memory/)",
+      "Bash(mv main_window.py settings_dialog.py ui_dialogs.py ui/)",
+      "Bash(mv mcp_client.py mcp_server.py mcp/)",
+      "Bash(mv TokaiTeio.png 22.png chi_sim.traineddata assets/)",
+      "Bash(touch:*)",
+      "Bash(mv \"G:/gpt-sovits/v2/agent/main/config/ai_agent_config.json\" \"G:/gpt-sovits/v2/agent/main/config/ai_agent_config.example.json\" \"G:/gpt-sovits/v2/agent/main/config/custom_tools.json\" \"G:/gpt-sovits/v2/agent/main/\")",
+      "Bash(rmdir \"G:/gpt-sovits/v2/agent/main/config\")"
+    ]
+  }
+}

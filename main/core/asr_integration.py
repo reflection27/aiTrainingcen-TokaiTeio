@@ -10,7 +10,7 @@ from PyQt5.QtCore import QObject, pyqtSignal
 # from realtimestt_worker import RealtimeSTTWorker
 
 # 使用新的直接集成方式
-from realtime_stt_direct import RealtimeSTTThread
+from core.realtime_stt_direct import RealtimeSTTThread
 
 class ASRIntegration(QObject):
     """ASR集成类，用于将RealtimeSTT集成到主程序ASR中"""
