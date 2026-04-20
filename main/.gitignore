@@ -14,7 +14,7 @@ ENV/
 .venv/
 
 # 记忆系统数据库文件
-memory_lake.db
+*.db
 memory_lake.json
 
 # 聊天日志
@@ -44,6 +44,7 @@ __pycache__/
 # IDE配置
 .vscode/
 .idea/
+.claude/
 *.swp
 *.swo
 *~

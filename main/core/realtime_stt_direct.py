@@ -1,4 +1,4 @@
-
+﻿
 # -*- coding: utf-8 -*-
 """
 RealtimeSTT直接集成模块
@@ -6,7 +6,7 @@ RealtimeSTT直接集成模块
 """
 import sys
 import os
-from PyQt5.QtCore import QObject, pyqtSignal, QThread
+from PySide6.QtCore import QObject, Signal, QThread
 
 # 添加 RealtimeSTT 路径
 realtimestt_path = os.path.join(os.path.dirname(__file__), 'plugins', 'RealtimeSTT-master')
@@ -19,8 +19,8 @@ class RealtimeSTTThread(QThread):
     """RealtimeSTT工作线程"""
 
     # 定义信号
-    text_ready = pyqtSignal(str)  # 识别到的文本
-    error_occurred = pyqtSignal(str)  # 错误信息
+    text_ready = Signal(str)  # 识别到的文本
+    error_occurred = Signal(str)  # 错误信息
 
     def __init__(self, config=None):
         super().__init__()

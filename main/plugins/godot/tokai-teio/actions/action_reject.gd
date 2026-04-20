@@ -1,10 +1,8 @@
-# action_smug.gd — 得意动作：耳朵自然微颤 + 双手叉腰
+# action_reject.gd — 拒绝动作：耳朵自然微颤 + 双臂在胸前比叉号
 #
-# 手臂（T_ARM_IN 秒渐入，保持不动）：
-#   Arm_L:   X=-45°(斜下)  Z=+10°(略向后展开)
-#   Arm_R:   X=-45°        Z=-10°
-#   Elbow_L: Z=-80°(小臂向内弯至腰侧)
-#   Elbow_R: Z=+80°
+# 手臂：大臂斜向前下，小臂交叉成叉号
+#   Arm_L/R: Z=±75°(向前)  X=-45°(向下)
+#   Elbow_L: Z=-90°  Elbow_R: Z=+90°
 
 func play(c: Node3D, on_finish: Callable) -> Tween:
 	var sk: Skeleton3D = c._skeleton
@@ -34,8 +32,8 @@ func play(c: Node3D, on_finish: Callable) -> Tween:
 	const EAR_FREQS := [0.37, 0.41, 0.53, 0.57, 0.61, 0.65]
 	const EAR_PHASE := [0.0,  1.1,  0.6,  1.7,  1.2,  2.3]
 
-	# ── 手臂骨骼（叉腰）──────────────────────────────────────────────────────
-	var arm_bone_names := ["Arm_L", "Arm_R", "Elbow_L", "Elbow_R", "Wrist_L", "Wrist_R"]
+	# ── 手臂骨骼（叉号）──────────────────────────────────────────────────────
+	var arm_bone_names := ["Arm_L", "Arm_R", "Elbow_L", "Elbow_R"]
 	var arm_ids:  Array[int]        = []
 	var arm_prev: Array[Quaternion] = []
 
@@ -44,16 +42,13 @@ func play(c: Node3D, on_finish: Callable) -> Tween:
 		arm_ids.append(bid)
 		arm_prev.append(sk.get_bone_pose_rotation(bid) if bid >= 0 else Quaternion.IDENTITY)
 
-	# 叉腰目标姿态：大臂侧展略下压到腰侧，小臂向内折至腰部
 	var arm_targets: Array[Quaternion] = [
-		Quaternion(Vector3(1,0,0), deg_to_rad(-25.0)) * Quaternion(Vector3(0,1,0), deg_to_rad( 90.0)) * Quaternion(Vector3(0,0,1), deg_to_rad( 20.0)),  # Arm_L
-		Quaternion(Vector3(1,0,0), deg_to_rad(-25.0)) * Quaternion(Vector3(0,1,0), deg_to_rad(-90.0)) * Quaternion(Vector3(0,0,1), deg_to_rad(-20.0)),  # Arm_R
+		Quaternion(Vector3(0,0,1), deg_to_rad(-75.0)) * Quaternion(Vector3(1,0,0), deg_to_rad(-45.0)),  # Arm_L
+		Quaternion(Vector3(0,0,1), deg_to_rad( 75.0)) * Quaternion(Vector3(1,0,0), deg_to_rad(-45.0)),  # Arm_R
 		Quaternion(Vector3(0,0,1), deg_to_rad(-90.0)),  # Elbow_L
 		Quaternion(Vector3(0,0,1), deg_to_rad( 90.0)),  # Elbow_R
-		Quaternion(Vector3(1,0,0), deg_to_rad(-20.0)) * Quaternion(Vector3(0,0,1), deg_to_rad(-20.0)),  # Wrist_L
-		Quaternion(Vector3(1,0,0), deg_to_rad(-20.0)) * Quaternion(Vector3(0,0,1), deg_to_rad( 20.0)),  # Wrist_R
 	]
-	const T_ARM_IN := 0.4
+	const T_ARM_IN := 0.35
 
 	var start_time := Time.get_ticks_msec() * 0.001
 
@@ -62,14 +57,12 @@ func play(c: Node3D, on_finish: Callable) -> Tween:
 		var elapsed := t - start_time
 		var arm_blend := minf(elapsed / T_ARM_IN, 1.0)
 
-		# 耳朵微颤
 		for ei in range(ear_ids.size()):
 			if ear_ids[ei] >= 0:
 				sk.set_bone_pose_rotation(ear_ids[ei],
 					ear_rots[ei] * Quaternion(ear_axes[ei],
 						deg_to_rad(EAR_AMPS[ei] * sin(t * EAR_FREQS[ei] * TAU + EAR_PHASE[ei]))))
 
-		# 手臂叉腰（渐入）
 		for ai in range(arm_ids.size()):
 			if arm_ids[ai] >= 0:
 				sk.set_bone_pose_rotation(arm_ids[ai],

@@ -1,14 +1,15 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 import sys
 import os
 import datetime
 import threading
-from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
+from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QTextEdit, QLineEdit, QPushButton,
                              QLabel, QProgressBar, QSplitter, QGroupBox,
-                             QFormLayout, QStatusBar, QFileDialog, QDialog, QSizePolicy, QMenu)
-from PyQt5.QtCore import Qt, QTimer, pyqtSignal
-from PyQt5.QtGui import QFont, QPixmap
+                             QFormLayout, QStatusBar, QFileDialog, QDialog, QSizePolicy, QMenu,
+                             QGridLayout, QFrame)
+from PySide6.QtCore import Qt, QTimer, Signal
+from PySide6.QtGui import QFont, QPixmap
 
 from core.improved_ai_agent import ImprovedAIAgent
 from ui.ui_dialogs import MemoryDialog
@@ -19,7 +20,7 @@ class AIAgentApp(QMainWindow):
     """东海帝王AI担当主窗口"""
     
     # 定义信号
-    response_ready = pyqtSignal(str)
+    response_ready = Signal(str)
     
     def __init__(self, config):
         super().__init__()
@@ -149,7 +150,7 @@ class AIAgentApp(QMainWindow):
         self.setGeometry(100, 100, window_width, window_height)
         
         # 设置窗口尺寸策略，固定大小不可拖拽
-        from PyQt5.QtWidgets import QSizePolicy
+        from PySide6.QtWidgets import QSizePolicy
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
         self.setFixedSize(window_width, window_height)  # 固定窗口大小
         
@@ -171,6 +172,20 @@ class AIAgentApp(QMainWindow):
         chat_layout.setSpacing(10)
         chat_layout.setContentsMargins(10, 10, 10, 10)
         
+        # 聊天区标题
+        chat_header = QLabel("聊天记录")
+        chat_header.setStyleSheet("""
+            QLabel {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
+                color: #ffffff;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 8px 14px;
+                border-radius: 6px 6px 0px 0px;
+                font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
+            }
+        """)
+
         # 聊天历史
         self.chat_history = QTextEdit()
         self.chat_history.setReadOnly(True)
@@ -178,16 +193,17 @@ class AIAgentApp(QMainWindow):
             QTextEdit {
                 background-color: #ffffff;
                 color: #333333;
-                border: none;
-                border-style: none;
+                border: 1px solid #e0e0e0;
+                border-top: none;
+                border-radius: 0px 0px 6px 6px;
                 outline: none;
                 padding: 10px;
                 font-family: 'Microsoft YaHei UI', sans-serif;
                 font-size: 14px;
             }
             QTextEdit:focus {
-                border: none;
-                border-style: none;
+                border: 1px solid #e0e0e0;
+                border-top: none;
                 outline: none;
             }
         """)
@@ -197,7 +213,7 @@ class AIAgentApp(QMainWindow):
         input_layout.setSpacing(10)
         
         self.input_edit = QLineEdit()
-        self.input_edit.setPlaceholderText("输入消息...")
+        self.input_edit.setPlaceholderText("输入消息，按回车键发送...")
         self.input_edit.returnPressed.connect(self.send_message_shortcut)
         self.input_edit.setStyleSheet("""
             QLineEdit {
@@ -219,7 +235,7 @@ class AIAgentApp(QMainWindow):
         image_btn.clicked.connect(self.send_image)
         image_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
@@ -228,11 +244,11 @@ class AIAgentApp(QMainWindow):
                 font-size: 14px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC300, stop:1 #2E7D32);
             }
         """)
 
@@ -249,7 +265,7 @@ class AIAgentApp(QMainWindow):
         send_btn.clicked.connect(self.send_message)
         send_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
@@ -259,11 +275,11 @@ class AIAgentApp(QMainWindow):
                 min-height: 20px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC300, stop:1 #2E7D32);
             }
         """)
 
@@ -284,19 +300,29 @@ class AIAgentApp(QMainWindow):
             }
         """)
 
-        # 创建水平布局，让输入元素与右侧按钮对齐
+        # 输入区白色卡片
+        input_wrapper = QWidget()
+        input_wrapper.setObjectName("inputWrapper")
+        input_wrapper.setStyleSheet("""
+            QWidget#inputWrapper {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
+            }
+        """)
         input_container = QHBoxLayout()
         input_container.setSpacing(10)
-        
+        input_container.setContentsMargins(10, 8, 10, 8)
         input_container.addWidget(self.input_edit)
         input_container.addWidget(image_btn)
         input_container.addWidget(self.record_btn)
         input_container.addWidget(send_btn)
         input_container.addWidget(self.progress_bar)
+        input_wrapper.setLayout(input_container)
 
-        chat_layout.addWidget(self.chat_history, 3)
-        chat_layout.addStretch()  # 添加弹性空间，让输入区域向下移动
-        chat_layout.addLayout(input_container, 1)
+        chat_layout.addWidget(chat_header)
+        chat_layout.addWidget(self.chat_history, 1)
+        chat_layout.addWidget(input_wrapper)
         chat_widget.setLayout(chat_layout)
 
         # 右侧预留区域 (占用1/4宽度，用于Live2D)
@@ -305,44 +331,45 @@ class AIAgentApp(QMainWindow):
         # 不设置样式表，让调色板控制颜色
         right_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
         right_layout = QVBoxLayout()
-        right_layout.setSpacing(5)  # 进一步减少间距，让半身像更接近状态栏
-        right_layout.setContentsMargins(10, 8, 10, 8)  # 减少上下边距，让按钮更接近底部
-        right_layout.addStretch()  # 添加弹性空间，让按钮推到底部
+        right_layout.setSpacing(8)
+        right_layout.setContentsMargins(10, 8, 10, 8)
 
-        # 状态信息
-        status_group = QGroupBox("")
-        status_group.setStyleSheet("""
-            QGroupBox {
-                color: #333333;
-                font-size: 10px;
-                border: 1px solid #d0d0d0;
-                border-radius: 5px;
-                margin-top: 1ex;
-                padding-top: 10px;
-                padding-bottom: 10px;
-                max-width: 320px;
-                min-width: 320px;
-                min-height: 120px;
-            }
-            QGroupBox::title {
-                subcontrol-origin: margin;
-                left: 10px;
-                padding: 4px 8px;
-                background-color: #f5f5f5 !important;
-                font-size: 12px !important;
-                font-weight: bold !important;
-                color: #333333 !important;
-                font-family: "Microsoft YaHei", "SimHei", sans-serif !important;
-                border: 1px solid #f5f5f5 !important;
-                border-radius: 3px !important;
-                margin-top: 3px !important;
-                margin-bottom: 3px !important;
+        # 状态信息卡片
+        status_container = QWidget()
+        status_container_layout = QVBoxLayout()
+        status_container_layout.setSpacing(0)
+        status_container_layout.setContentsMargins(0, 0, 0, 0)
+
+        status_header = QLabel("系统状态")
+        status_header.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        status_header.setStyleSheet("""
+            QLabel {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
+                color: #ffffff;
+                font-weight: bold;
+                font-size: 14px;
+                padding: 8px 14px;
+                border-radius: 6px 6px 0px 0px;
+                font-family: 'Microsoft YaHei', 'SimHei', sans-serif;
             }
         """)
+
+        status_body = QWidget()
+        status_body.setObjectName("statusBody")
+        status_body.setStyleSheet("""
+            QWidget#statusBody {
+                background-color: #ffffff;
+                border: 1px solid #e0e0e0;
+                border-top: none;
+                border-radius: 0px 0px 6px 6px;
+            }
+        """)
+
         status_layout = QFormLayout()
-        status_layout.setVerticalSpacing(12)  # 进一步增加垂直间距，配合更大的字体
-        status_layout.setHorizontalSpacing(8)  # 增加水平间距，配合更大的字体
-        
+        status_layout.setVerticalSpacing(8)
+        status_layout.setHorizontalSpacing(8)
+        status_layout.setContentsMargins(10, 16, 10, 8)
+
         # 设置标签样式
         status_layout.setLabelAlignment(Qt.AlignRight)
 
@@ -403,7 +430,10 @@ class AIAgentApp(QMainWindow):
         # 启动时间同步
         self.sync_time()
 
-        status_group.setLayout(status_layout)
+        status_body.setLayout(status_layout)
+        status_container_layout.addWidget(status_header)
+        status_container_layout.addWidget(status_body)
+        status_container.setLayout(status_container_layout)
 
 
         # 东海帝王半身像区域
@@ -414,22 +444,17 @@ class AIAgentApp(QMainWindow):
         live2d_label.setStyleSheet("""
             QLabel {
                 background-color: #ffffff;
-                border: 2px solid #4a90e2;
-                border-radius: 15px;
-                padding: 5px;
+                border: 1px solid #e0e0e0;
+                border-radius: 6px;
             }
         """)
-        
+
         # 加载东海帝王图片
         try:
             pixmap = QPixmap(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "TokaiTeio.png"))
             if not pixmap.isNull():
-                # 重新计算适合增加高度后的9:16比例尺寸
-                # 系统状态栏宽度固定为320px，东海帝王图片宽度也要320px
-                # 窗口高度增加到900px，为Live2D区域提供更多垂直空间
-                # 为了保持9:16比例，高度 = 320*(16/9) = 569px
-                target_width = 320
-                target_height = int(target_width * 16 / 9)  # 569px
+                target_width = 270
+                target_height = int(target_width * 16 / 9)
                 
                 # 缩放图片到目标尺寸，保持宽高比
                 scaled_pixmap = pixmap.scaled(target_width, target_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
@@ -445,8 +470,8 @@ class AIAgentApp(QMainWindow):
                     QLabel {
                         background-color: #ffffff;
                         color: #333333;
-                        border: 2px solid #4a90e2;
-                        border-radius: 15px;
+                        border: 1px solid #e0e0e0;
+                        border-radius: 6px;
                         font-size: 18px;
                         padding: 20px;
                     }
@@ -465,28 +490,29 @@ class AIAgentApp(QMainWindow):
                 }
             """)
 
-        # 按钮区域
-        button_layout = QHBoxLayout()
+        # 按钮区域 4列×2行
+        button_layout = QGridLayout()
+        button_layout.setSpacing(6)
 
         # 设置按钮
         settings_btn = QPushButton("设置")
         settings_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 7px 10px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
+                font-size: 13px;
+                min-height: 16px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC300, stop:1 #2E7D32);
             }
         """)
         settings_btn.clicked.connect(self.open_settings)
@@ -495,21 +521,21 @@ class AIAgentApp(QMainWindow):
         memory_btn = QPushButton("记忆系统")
         memory_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 7px 10px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
+                font-size: 13px;
+                min-height: 16px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
                 box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC300, stop:1 #2E7D32);
             }
         """)
         memory_btn.clicked.connect(self.open_memory)
@@ -522,10 +548,10 @@ class AIAgentApp(QMainWindow):
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 7px 10px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
+                font-size: 13px;
+                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #E53935, stop:1 #B71C1C);
@@ -545,10 +571,10 @@ class AIAgentApp(QMainWindow):
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 7px 10px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
+                font-size: 13px;
+                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9C27B0, stop:1 #6A1B9A);
@@ -570,10 +596,10 @@ class AIAgentApp(QMainWindow):
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 7px 10px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
+                font-size: 13px;
+                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #90A4AE, stop:1 #546E7A);
@@ -596,10 +622,10 @@ class AIAgentApp(QMainWindow):
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 7px 10px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
+                font-size: 13px;
+                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #E91E63, stop:1 #AD1457);
@@ -615,20 +641,20 @@ class AIAgentApp(QMainWindow):
         self.game_mode_btn.setCheckable(True)
         self.game_mode_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #66BB6A, stop:1 #388E3C);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #42A5F5, stop:1 #1565C0);
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 7px 10px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
+                font-size: 13px;
+                min-height: 16px;
             }
             QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #4CAF50, stop:1 #2E7D32);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1E88E5, stop:1 #0D47A1);
             }
             QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #388E3C, stop:1 #1B5E20);
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1976D2, stop:1 #0A3D91);
             }
             QPushButton:checked {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #FFA726, stop:1 #E65100);
@@ -644,10 +670,10 @@ class AIAgentApp(QMainWindow):
                 color: #FFFFFF;
                 border: none;
                 border-radius: 8px;
-                padding: 10px 15px;
+                padding: 7px 10px;
                 font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
+                font-size: 13px;
+                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #546E7A, stop:1 #37474F);
@@ -658,17 +684,19 @@ class AIAgentApp(QMainWindow):
         """)
         compact_btn.clicked.connect(self.enter_compact_mode)
 
-        button_layout.addWidget(settings_btn)
-        button_layout.addWidget(memory_btn)
-        button_layout.addWidget(test_btn)
-        button_layout.addWidget(test_event_btn)
-        button_layout.addWidget(self.multimodal_btn)
-        button_layout.addWidget(companion_btn)
-        button_layout.addWidget(self.game_mode_btn)
-        button_layout.addWidget(compact_btn)
+        # 第一排：游戏模式 陪伴模式 悬浮窗模式 多模态
+        button_layout.addWidget(self.game_mode_btn, 0, 0)
+        button_layout.addWidget(companion_btn,      0, 1)
+        button_layout.addWidget(compact_btn,        0, 2)
+        button_layout.addWidget(self.multimodal_btn, 0, 3)
+        # 第二排：记忆系统 设置 测试 测试事件
+        button_layout.addWidget(memory_btn,    1, 0)
+        button_layout.addWidget(settings_btn,  1, 1)
+        button_layout.addWidget(test_btn,      1, 2)
+        button_layout.addWidget(test_event_btn, 1, 3)
 
-        right_layout.addWidget(status_group)
-        right_layout.addWidget(live2d_label)  # 移除stretch参数，让图片按实际尺寸显示
+        right_layout.addWidget(status_container)
+        right_layout.addWidget(live2d_label)
         right_layout.addLayout(button_layout)
         right_widget.setLayout(right_layout)
 
@@ -1136,7 +1164,7 @@ class AIAgentApp(QMainWindow):
             # 关闭状态：使用绿色渐变
             self.record_btn.setStyleSheet("""
                 QPushButton {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AED581, stop:1 #4CAF50);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
                     color: #FFFFFF;
                     border: none;
                     border-radius: 8px;
@@ -1145,11 +1173,11 @@ class AIAgentApp(QMainWindow):
                     font-size: 14px;
                 }
                 QPushButton:hover {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC65, stop:1 #388E3C);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
                     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
                 }
                 QPushButton:pressed {
-                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC34A, stop:1 #2E7D32);
+                    background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC300, stop:1 #2E7D32);
                 }
             """)
 
@@ -1207,7 +1235,7 @@ class AIAgentApp(QMainWindow):
     def open_settings(self):
         """打开设置窗口"""
         settings_dialog = SettingsDialog(self.config, self, self.update_transparency)
-        settings_dialog.exec_()
+        settings_dialog.exec()
         # 重新加载配置
         self.config = load_config()
         
@@ -1224,7 +1252,7 @@ class AIAgentApp(QMainWindow):
     def open_memory(self):
         """打开记忆系统窗口"""
         memory_dialog = MemoryDialog(self.agent.memory, agent=self.agent, parent=self)
-        memory_dialog.exec_()
+        memory_dialog.exec()
 
     def test_add_message(self):
         """测试添加消息到聊天历史"""
@@ -1242,7 +1270,7 @@ class AIAgentApp(QMainWindow):
         print(f"🧪 测试自定义事件: {test_message}")
 
         # 创建自定义事件（使用与main.py中相同的TextEvent类）
-        from PyQt5.QtCore import QEvent
+        from PySide6.QtCore import QEvent
         class TextEvent(QEvent):
             EVENT_TYPE = QEvent.User + 1
 
@@ -1410,7 +1438,7 @@ class AIAgentApp(QMainWindow):
 
     def changeEvent(self, event):
         """处理最小化恢复，确保任务栏点击能正常唤起窗口"""
-        from PyQt5.QtCore import QEvent
+        from PySide6.QtCore import QEvent
         if event.type() == QEvent.WindowStateChange:
             was_minimized = bool(event.oldState() & Qt.WindowMinimized)
             is_minimized  = bool(self.windowState() & Qt.WindowMinimized)

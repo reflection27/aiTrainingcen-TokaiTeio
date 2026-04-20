@@ -1,16 +1,16 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 设置对话框模块 - 浅色主题版本
 """
 
 import os
-from PyQt5.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QLineEdit,
+from PySide6.QtWidgets import (QDialog, QVBoxLayout, QHBoxLayout, QTextEdit, QLineEdit,
                              QPushButton, QLabel, QComboBox, QSplitter, QListWidget,
                              QGroupBox, QFormLayout, QMessageBox, QInputDialog,
                              QFileDialog, QProgressBar, QListWidgetItem, QTabWidget,
                              QSlider, QCheckBox, QScrollArea, QWidget)
-from PyQt5.QtCore import Qt, QTimer
-from PyQt5.QtGui import QIcon, QPalette, QColor
+from PySide6.QtCore import Qt, QTimer
+from PySide6.QtGui import QIcon, QPalette, QColor
 
 from core.config import save_config
 from core.utils import scan_windows_apps
@@ -24,8 +24,8 @@ class SettingsDialog(QDialog):
         self.transparency_callback = transparency_callback  # 透明度更新回调
         self.setWindowTitle("东海帝王AI设置")
         # 导入Qt模块
-        from PyQt5.QtCore import Qt
-        from PyQt5.QtGui import QPalette, QColor
+        from PySide6.QtCore import Qt
+        from PySide6.QtGui import QPalette, QColor
         # 设置窗口标志，确保可以拖动和关闭
         self.setWindowFlags(Qt.Window | Qt.WindowCloseButtonHint | Qt.WindowMinMaxButtonsHint)
         # 设置窗口模态，确保它可以正常拖动
@@ -159,7 +159,7 @@ class SettingsDialog(QDialog):
         """)
 
         # 居中显示窗口
-        from PyQt5.QtGui import QGuiApplication
+        from PySide6.QtGui import QGuiApplication
         screen = QGuiApplication.primaryScreen().availableGeometry()
         x = (screen.width() - 600) // 2
         y = (screen.height() - 1200) // 2
@@ -169,7 +169,7 @@ class SettingsDialog(QDialog):
         self.setGeometry(x, y, 600, 1200)  # 设置初始高度为1200px
 
         # 设置窗口大小策略，只允许垂直调整高度，不允许调整宽度
-        from PyQt5.QtWidgets import QSizePolicy
+        from PySide6.QtWidgets import QSizePolicy
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Preferred)
         self.setMinimumWidth(600)  # 设置最小宽度
         self.setMaximumWidth(600)  # 设置最大宽度，与最小宽度相同，锁定宽度
@@ -663,7 +663,7 @@ class SettingsDialog(QDialog):
         ok_btn.clicked.connect(dialog.accept)
         cancel_btn.clicked.connect(dialog.reject)
 
-        if dialog.exec_() == QDialog.Accepted:
+        if dialog.exec() == QDialog.Accepted:
             selected_items = app_list.selectedItems()
             for item in selected_items:
                 app_data = item.data(Qt.UserRole)

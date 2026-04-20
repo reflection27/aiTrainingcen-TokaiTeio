@@ -17,6 +17,7 @@ const PRESETS: Array[String] = [
 
 var _idx: int = 0
 var _talking: bool = false
+var _rot_y: float = 0.0  # 身体绕 Y 轴旋转角度（度，前后转身）
 
 @onready var _character: Node3D = get_parent().get_node("CharacterRoot")
 @onready var _label: Label = _make_label()
@@ -41,6 +42,14 @@ func _input(event: InputEvent) -> void:
 		KEY_SPACE:
 			_character.play_action(PRESETS[_idx])
 			print("[TestExpr] 重播动作：%s" % PRESETS[_idx])
+		KEY_UP:
+			_rot_y += 15.0
+			_character._base_rot_y = deg_to_rad(_rot_y)
+			print("[TestExpr] Y 旋转：%.0f°" % _rot_y)
+		KEY_DOWN:
+			_rot_y -= 15.0
+			_character._base_rot_y = deg_to_rad(_rot_y)
+			print("[TestExpr] Y 旋转：%.0f°" % _rot_y)
 		KEY_T:
 			_talking = not _talking
 			_character.set_state("talking" if _talking else "idle")

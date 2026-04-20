@@ -1,4 +1,4 @@
-
+﻿
 # -*- coding: utf-8 -*-
 """
 流式文本队列管理器
@@ -10,7 +10,7 @@ import queue
 import threading
 import time
 from typing import Optional, Callable
-from PyQt5.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 _EMOTION_TAG_RE = re.compile(r'\s*\[emotion:\w+\]')
 
@@ -24,8 +24,8 @@ class TextQueueManager(QObject):
     """流式文本队列管理器"""
 
     # 定义信号
-    text_ready = pyqtSignal(str)  # 文本准备就绪，可以发送到TTS
-    synthesis_complete = pyqtSignal()  # 语音合成完成
+    text_ready = Signal(str)  # 文本准备就绪，可以发送到TTS
+    synthesis_complete = Signal()  # 语音合成完成
 
     def __init__(self, tts_manager=None):
         super().__init__()

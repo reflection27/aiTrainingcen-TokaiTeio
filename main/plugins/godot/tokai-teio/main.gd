@@ -82,10 +82,10 @@ func _on_command(cmd: Dictionary) -> void:
 			var name: String = cmd.get("name", "")
 			ok = character.play_animation(name)
 
-		# ── 角色整体绕 Z 轴旋转：{"cmd":"rotate_z","angle":30}
-		"rotate_z":
+		# ── 角色整体绕 Y 轴旋转（前后转身）：{"cmd":"rotate_y","angle":30}
+		"rotate_y":
 			var angle: float = cmd.get("angle", 0.0)
-			character.rotation_degrees.z = angle
+			character._base_rot_y = deg_to_rad(angle)
 
 		# ── 尾巴下垂调参（调好后填入 action_happy.gd）────────────────
 		# {"cmd":"tail_droop","angle":30}  正值向后下垂，负值向前翘

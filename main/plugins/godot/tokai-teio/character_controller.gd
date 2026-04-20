@@ -10,6 +10,7 @@ enum State { IDLE, TALKING, WAVE }
 
 var _state: State = State.IDLE
 var _base_y: float = 0.0
+var _base_rot_y: float = 0.0  # 外部设置的 Y 轴基准朝向（弧度），摇摆叠加在此偏移上
 var _is_waving: bool = false
 var _wave_tween: Tween = null
 var _expr_tween: Tween = null
@@ -118,6 +119,8 @@ const ACTION_MAP: Dictionary = {
 	"smug":      preload("res://actions/action_smug.gd"),
 	"dere":      preload("res://actions/action_dere.gd"),
 	"excited":   preload("res://actions/action_excited.gd"),
+	"reject":    preload("res://actions/action_reject.gd"),
+	"cheer":     preload("res://actions/action_cheer.gd"),
 }
 
 # 说话口型循环（小→大→下一音→…）
@@ -242,11 +245,11 @@ func _process(delta: float) -> void:
 	match _state:
 		State.IDLE:
 			position.y = _base_y + sin(t * 1.6) * 0.01
-			rotation.y = sin(t * 0.7) * deg_to_rad(2.5)
+			rotation.y = _base_rot_y + sin(t * 0.7) * deg_to_rad(2.5)
 			rotation.x = sin(t * 1.25 + 1.0) * deg_to_rad(0.5)
 		State.TALKING:
 			position.y = _base_y + sin(t * 2.2) * 0.013
-			rotation.y = sin(t * 1.4) * deg_to_rad(3.5)
+			rotation.y = _base_rot_y + sin(t * 1.4) * deg_to_rad(3.5)
 			rotation.x = sin(t * 1.8 + 0.5) * deg_to_rad(1.2)
 			_update_lip_sync(delta)
 	if _action_process_cb.is_valid():

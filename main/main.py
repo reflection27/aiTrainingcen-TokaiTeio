@@ -1,4 +1,4 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 东海帝王AI担当 - 主程序入口
 重构后的模块化版本
@@ -10,9 +10,9 @@ import threading
 import json
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QFont, QPalette, QColor
-from PyQt5.QtCore import Qt, QObject, pyqtSignal
+from PySide6.QtWidgets import QApplication
+from PySide6.QtGui import QFont, QPalette, QColor
+from PySide6.QtCore import Qt, QObject, Signal
 
 # 加载.env文件
 def load_env():
@@ -95,7 +95,7 @@ class TextInputRequestHandler(BaseHTTPRequestHandler):
                     # 将文本发送到主窗口
                     if main_window_instance:
                         # 使用QApplication.postEvent将事件发送到主线程
-                        from PyQt5.QtCore import QEvent
+                        from PySide6.QtCore import QEvent
                         class TextEvent(QEvent):
                             EVENT_TYPE = QEvent.User + 1
                             
@@ -173,7 +173,7 @@ def main():
 
         # 创建调色板
         palette = QPalette()
-        palette.setColor(QPalette.Window, QColor(245, 245, 245))  # 浅灰色背景
+        palette.setColor(QPalette.Window, QColor(242, 244, 247))  # 蓝灰色背景
         palette.setColor(QPalette.WindowText, QColor(51, 51, 51))  # 深灰色文本
         palette.setColor(QPalette.Base, QColor(255, 255, 255))  # 白色基础色
         palette.setColor(QPalette.AlternateBase, QColor(245, 245, 245))  # 浅灰色交替基础色
@@ -248,7 +248,7 @@ def main():
                 print(f"📄 输入框当前文本: {window.input_edit.text()}")
 
                 # 使用QTimer.singleShot确保send_message在主线程中调用
-                from PyQt5.QtCore import QTimer
+                from PySide6.QtCore import QTimer
                 QTimer.singleShot(100, window.send_message)
                 print(f"📤 已安排延迟调用send_message方法")
                 return True
@@ -258,7 +258,7 @@ def main():
         window.event = custom_event
 
         # 创建事件过滤器
-        from PyQt5.QtCore import QObject
+        from PySide6.QtCore import QObject
         class TextEventFilter(QObject):
             def eventFilter(self, obj, event):
                 # 只处理自定义文本输入事件
@@ -270,7 +270,7 @@ def main():
                     print(f"📄 输入框当前文本: {window.input_edit.text()}")
 
                     # 使用QTimer.singleShot确保send_message在主线程中调用
-                    from PyQt5.QtCore import QTimer
+                    from PySide6.QtCore import QTimer
                     QTimer.singleShot(100, window.send_message)
                     print(f"📤 已安排延迟调用send_message方法")
                     return True
@@ -289,7 +289,7 @@ def main():
 
         # 运行应用程序
         print("🔄 启动事件循环...")
-        sys.exit(app.exec_())
+        sys.exit(app.exec())
     except Exception as e:
         print(f"❌ 程序发生错误: {str(e)}")
         import traceback

@@ -1,11 +1,14 @@
-# action_excited.gd — 兴奋动作：尾巴高频欢快摇动 + 双臂W形握拳
+# action_cheer.gd — 加油打气动作：尾巴高频欢快摇动 + 双手握拳加油
+#
+# 备份自 action_excited.gd
 #
 # 尾巴：比 happy 频率更高、幅度略大的正弦摆动
 #
-# 手臂（T_ARM_IN 秒渐入，保持W形）：
-#   大臂横向展开接近水平：X=-10°  Z=±20°
-#   小臂上折90°：Elbow_L Z=-90°  Elbow_R Z=+90°
-#   双臂与肩膀俯视形成"W"字形
+# 手臂（T_ARM_IN 秒渐入后持续上下泵动）：
+#   Arm_L:   X=-15°  Z=-15°(略向前)
+#   Arm_R:   X=-15°  Z=+15°
+#   Elbow_L: Z=-120°(小臂高举成加油姿)  ±PUMP_AMP 上下泵动
+#   Elbow_R: Z=+120°                   ±PUMP_AMP 上下泵动（与左臂反相，形成交替打气）
 
 func play(c: Node3D, on_finish: Callable) -> Tween:
 	var sk: Skeleton3D = c._skeleton
@@ -73,40 +76,15 @@ func play(c: Node3D, on_finish: Callable) -> Tween:
 		arm_ids.append(bid)
 		arm_prev.append(sk.get_bone_pose_rotation(bid) if bid >= 0 else Quaternion.IDENTITY)
 
-	# 加油姿势基础目标（值可在 Godot 内调参）
 	var arm_targets: Array[Quaternion] = [
-		Quaternion(Vector3(1,0,0), deg_to_rad(-10.0)) * Quaternion(Vector3(0,1,0), deg_to_rad(-75.0)),  # Arm_L
-		Quaternion(Vector3(1,0,0), deg_to_rad(-10.0)) * Quaternion(Vector3(0,1,0), deg_to_rad( 75.0)),  # Arm_R
-		Quaternion(Vector3(0,0,1), deg_to_rad(-90.0)) * Quaternion(Vector3(0,1,0), deg_to_rad(-90.0)),  # Elbow_L
-		Quaternion(Vector3(0,0,1), deg_to_rad( 90.0)) * Quaternion(Vector3(0,1,0), deg_to_rad( 90.0)),  # Elbow_R
+		Quaternion(Vector3(0,0,1), deg_to_rad(-15.0)) * Quaternion(Vector3(1,0,0), deg_to_rad(-15.0)),  # Arm_L
+		Quaternion(Vector3(0,0,1), deg_to_rad( 15.0)) * Quaternion(Vector3(1,0,0), deg_to_rad(-15.0)),  # Arm_R
+		Quaternion(Vector3(0,0,1), deg_to_rad(-120.0)),  # Elbow_L
+		Quaternion(Vector3(0,0,1), deg_to_rad( 120.0)),  # Elbow_R
 	]
-	const T_ARM_IN  := 0.35   # 手臂渐入时长
-	const PUMP_AMP  := 0.0    # 泵动关闭（W形静止姿势）
+	const T_ARM_IN  := 0.35
+	const PUMP_AMP  := 12.0
 	const PUMP_FREQ := 2.2
-
-	# ── 手指骨骼（握拳）─────────────────────────────────────────────────────
-	var finger_bone_names := [
-		"Index_01_L",  "Index_02_L",  "Index_03_L",
-		"Middle_01_L", "Middle_02_L", "Middle_03_L",
-		"Ring_01_L",   "Ring_02_L",   "Ring_03_L",
-		"Pinky_01_L",  "Pinky_02_L",  "Pinky_03_L",
-		"Index_01_R",  "Index_02_R",  "Index_03_R",
-		"Middle_01_R", "Middle_02_R", "Middle_03_R",
-		"Ring_01_R",   "Ring_02_R",   "Ring_03_R",
-		"Pinky_01_R",  "Pinky_02_R",  "Pinky_03_R",
-	]
-	var finger_ids:  Array[int]        = []
-	var finger_prev: Array[Quaternion] = []
-	for bname in finger_bone_names:
-		var bid := sk.find_bone(bname)
-		finger_ids.append(bid)
-		finger_prev.append(sk.get_bone_pose_rotation(bid) if bid >= 0 else Quaternion.IDENTITY)
-
-	var finger_targets: Array[Quaternion] = []
-	for i in range(12):  # 左手12根（Index/Middle/Ring/Pinky × 3节）
-		finger_targets.append(Quaternion(Vector3(1,0,0), deg_to_rad(-80.0)) * Quaternion(Vector3(0,0,1), deg_to_rad( 15.0)))
-	for i in range(12):  # 右手12根
-		finger_targets.append(Quaternion(Vector3(1,0,0), deg_to_rad(-80.0)) * Quaternion(Vector3(0,0,1), deg_to_rad(-15.0)))
 
 	var start_time := Time.get_ticks_msec() * 0.001
 
@@ -135,12 +113,6 @@ func play(c: Node3D, on_finish: Callable) -> Tween:
 		sk.set_bone_pose_rotation(arm_ids[0], arm_prev[0].slerp(arm_targets[0], arm_blend)) if arm_ids[0] >= 0 else null
 		sk.set_bone_pose_rotation(arm_ids[1], arm_prev[1].slerp(arm_targets[1], arm_blend)) if arm_ids[1] >= 0 else null
 
-		# 手指握拳渐入
-		for fi in range(finger_ids.size()):
-			if finger_ids[fi] >= 0:
-				sk.set_bone_pose_rotation(finger_ids[fi],
-					finger_prev[fi].slerp(finger_targets[fi], arm_blend))
-
 		# 肘部加油泵动（渐入完成后）：左右反相，形成交替打气感
 		var pump: float = sin(t * PUMP_FREQ * TAU) * PUMP_AMP * arm_blend
 		if arm_ids[2] >= 0:
@@ -157,9 +129,6 @@ func play(c: Node3D, on_finish: Callable) -> Tween:
 		for ai in range(arm_ids.size()):
 			if arm_ids[ai] >= 0:
 				sk.set_bone_pose_rotation(arm_ids[ai], arm_prev[ai])
-		for fi in range(finger_ids.size()):
-			if finger_ids[fi] >= 0:
-				sk.set_bone_pose_rotation(finger_ids[fi], finger_prev[fi])
 		for i in range(bone_ids.size()):
 			if bone_ids[i] >= 0:
 				sk.set_bone_pose_rotation(bone_ids[i], base_rots[i])

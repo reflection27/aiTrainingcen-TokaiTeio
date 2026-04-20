@@ -68,36 +68,36 @@ def run_interactive() -> None:
                 termios.tcsetattr(fd, termios.TCSADRAIN, old)
 
     idx = 0
-    rot_z = 0.0
-    print("← → 切换表情  ↑ ↓ Z轴旋转(±5°)  Space 重播动作  R 重置旋转  Q 退出")
-    print(f"\n当前: [{idx+1}/{len(PRESETS)}] {PRESETS[idx]}  旋转: {rot_z:+.1f}°")
+    rot_y = 0.0
+    print("← → 切换表情  ↑ ↓ Y轴旋转/前后转身(±5°)  Space 重播动作  R 重置旋转  Q 退出")
+    print(f"\n当前: [{idx+1}/{len(PRESETS)}] {PRESETS[idx]}  旋转: {rot_y:+.1f}°")
     apply(PRESETS[idx])
 
     while True:
         ch = getch()
         if ch in ('M', 'C'):    # 右箭头（Windows: M / Unix: C）
             idx = (idx + 1) % len(PRESETS)
-            print(f"\n切换 → [{idx+1}/{len(PRESETS)}] {PRESETS[idx]}  旋转: {rot_z:+.1f}°")
+            print(f"\n切换 → [{idx+1}/{len(PRESETS)}] {PRESETS[idx]}  旋转: {rot_y:+.1f}°")
             apply(PRESETS[idx])
         elif ch in ('K', 'D'):  # 左箭头（Windows: K / Unix: D）
             idx = (idx - 1 + len(PRESETS)) % len(PRESETS)
-            print(f"\n切换 → [{idx+1}/{len(PRESETS)}] {PRESETS[idx]}  旋转: {rot_z:+.1f}°")
+            print(f"\n切换 → [{idx+1}/{len(PRESETS)}] {PRESETS[idx]}  旋转: {rot_y:+.1f}°")
             apply(PRESETS[idx])
         elif ch in ('H', 'A'):  # 上箭头（Windows: H / Unix: A）
-            rot_z += 5.0
-            send({"cmd": "rotate_z", "angle": rot_z})
-            print(f"\r旋转: {rot_z:+.1f}°   ", end="", flush=True)
+            rot_y += 5.0
+            send({"cmd": "rotate_y", "angle": rot_y})
+            print(f"\r旋转: {rot_y:+.1f}°   ", end="", flush=True)
         elif ch in ('P', 'B'):  # 下箭头（Windows: P / Unix: B）
-            rot_z -= 5.0
-            send({"cmd": "rotate_z", "angle": rot_z})
-            print(f"\r旋转: {rot_z:+.1f}°   ", end="", flush=True)
+            rot_y -= 5.0
+            send({"cmd": "rotate_y", "angle": rot_y})
+            print(f"\r旋转: {rot_y:+.1f}°   ", end="", flush=True)
         elif ch == ' ':
             print(f"\n重播动作: {PRESETS[idx]}")
             send({"cmd": "play_action", "preset": PRESETS[idx]})
         elif ch in ('r', 'R'):
-            rot_z = 0.0
-            send({"cmd": "rotate_z", "angle": 0.0})
-            print(f"\r旋转重置: {rot_z:+.1f}°   ", end="", flush=True)
+            rot_y = 0.0
+            send({"cmd": "rotate_y", "angle": 0.0})
+            print(f"\r旋转重置: {rot_y:+.1f}°   ", end="", flush=True)
         elif ch.lower() == 'q':
             print("\n退出。")
             break

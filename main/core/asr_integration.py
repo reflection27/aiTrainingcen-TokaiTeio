@@ -1,10 +1,10 @@
-# -*- coding: utf-8 -*-
+﻿# -*- coding: utf-8 -*-
 """
 ASR集成模块
 提供RealtimeSTT与主程序ASR功能的集成
 """
 
-from PyQt5.QtCore import QObject, pyqtSignal
+from PySide6.QtCore import QObject, Signal
 
 # 注释掉原有的STT调用方式
 # from realtimestt_worker import RealtimeSTTWorker
@@ -16,8 +16,8 @@ class ASRIntegration(QObject):
     """ASR集成类，用于将RealtimeSTT集成到主程序ASR中"""
 
     # 定义信号
-    text_ready = pyqtSignal(str)  # 识别到的文本
-    error_occurred = pyqtSignal(str)  # 错误信息
+    text_ready = Signal(str)  # 识别到的文本
+    error_occurred = Signal(str)  # 错误信息
 
     def __init__(self, config=None):
         super().__init__()
