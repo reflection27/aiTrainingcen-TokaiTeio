@@ -119,7 +119,7 @@ def get_bert_feature(text, word2ph):
 
 
 n_semantic = 1024
-dict_s2 = torch.load(sovits_path, map_location="cpu")
+dict_s2 = torch.load(sovits_path, map_location="cpu", weights_only=False)
 hps = dict_s2["config"]
 print(hps)
 
@@ -153,7 +153,7 @@ class DictToAttrRecursive(dict):
 
 hps = DictToAttrRecursive(hps)
 hps.model.semantic_frame_rate = "25hz"
-dict_s1 = torch.load(gpt_path, map_location="cpu")
+dict_s1 = torch.load(gpt_path, map_location="cpu", weights_only=False)
 config = dict_s1["config"]
 ssl_model = cnhubert.get_model()
 if is_half:

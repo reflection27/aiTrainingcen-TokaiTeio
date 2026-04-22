@@ -7,11 +7,31 @@ from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QTextEdit, QLineEdit, QPushButton,
                              QLabel, QProgressBar, QSplitter, QGroupBox,
                              QFileDialog, QDialog, QSizePolicy, QMenu,
-                             QGridLayout, QFrame)
+                             QGridLayout, QFrame, QScrollArea)
 from PySide6.QtCore import Qt, QTimer, Signal
 from PySide6.QtGui import QFont, QPixmap, QKeyEvent
 
 from core.improved_ai_agent import ImprovedAIAgent
+
+
+class BubbleLabel(QLabel):
+    """自动根据宽度计算换行高度的气泡标签"""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.setWordWrap(True)
+        self.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Minimum)
+
+    def resizeEvent(self, event):
+        super().resizeEvent(event)
+        h = self.heightForWidth(self.width())
+        if h > 0:
+            self.setMinimumHeight(h)
+
+    def setText(self, text):
+        super().setText(text)
+        h = self.heightForWidth(self.width())
+        if h > 0:
+            self.setMinimumHeight(h)
 
 
 class ChatInputEdit(QTextEdit):
@@ -26,6 +46,72 @@ class ChatInputEdit(QTextEdit):
                 self.send_triggered.emit()      # Enter → 发送
         else:
             super().keyPressEvent(event)
+class ClockLoadingWidget(QWidget):
+    """发送消息时显示的旋转秒表动画"""
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self._angle = 0
+        self._timer = QTimer(self)
+        self._timer.timeout.connect(self._tick)
+        self.setFixedSize(44, 44)
+        self.hide()
+
+    def _tick(self):
+        self._angle = (self._angle + 4) % 360
+        self.update()
+
+    def start(self):
+        self._angle = 0
+        self._timer.start(16)
+        self.show()
+
+    def stop(self):
+        self._timer.stop()
+        self.hide()
+
+    def paintEvent(self, event):
+        import math
+        from PySide6.QtGui import QPainter, QColor, QPen, QBrush
+        p = QPainter(self)
+        p.setRenderHint(QPainter.Antialiasing)
+        W, H = self.width(), self.height()
+        cx = W // 2
+        cy = H // 2 + 2          # 向下偏移给顶部小环留空间
+        r_outer = 17
+        # 外圈（金色）
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor("#E8A020"))
+        p.drawEllipse(cx - r_outer, cy - r_outer, r_outer * 2, r_outer * 2)
+        # 表盘（奶油色）
+        r_face = r_outer - 4
+        p.setBrush(QColor("#FFF8E1"))
+        p.drawEllipse(cx - r_face, cy - r_face, r_face * 2, r_face * 2)
+        # 12个刻度点
+        p.setBrush(QColor("#6B3A2A"))
+        r_tick = r_face - 3
+        for i in range(12):
+            a = math.radians(i * 30 - 90)
+            tx = cx + r_tick * math.cos(a)
+            ty = cy + r_tick * math.sin(a)
+            p.drawEllipse(int(tx - 1.5), int(ty - 1.5), 3, 3)
+        # 旋转指针
+        a_hand = math.radians(self._angle - 90)
+        r_hand = r_face - 5
+        hx = cx + r_hand * math.cos(a_hand)
+        hy = cy + r_hand * math.sin(a_hand)
+        pen = QPen(QColor("#6B3A2A"), 2, Qt.SolidLine, Qt.RoundCap)
+        p.setPen(pen)
+        p.drawLine(cx, cy, int(hx), int(hy))
+        # 顶部小环
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor("#E8A020"))
+        p.drawEllipse(cx - 3, cy - r_outer - 3, 6, 6)
+        # 右侧按钮
+        p.setBrush(QColor("#C07010"))
+        p.drawRoundedRect(cx + r_outer - 2, cy - 4, 5, 7, 2, 2)
+        p.end()
+
+
 from ui.ui_dialogs import MemoryDialog
 from ui.settings_dialog import SettingsDialog
 from core.config import load_config
@@ -35,6 +121,8 @@ class AIAgentApp(QMainWindow):
     
     # 定义信号
     response_ready = Signal(str)
+    _tts_checked   = Signal(str, str)   # (text, color)
+    _asr_checked   = Signal(str, str)
     
     def __init__(self, config):
         super().__init__()
@@ -59,6 +147,8 @@ class AIAgentApp(QMainWindow):
         
         # 连接信号
         self.response_ready.connect(self.update_ui_with_response)
+        self._tts_checked.connect(self._apply_tts_status)
+        self._asr_checked.connect(self._apply_asr_status)
         
         # 启动状态更新定时器
         self.status_timer = QTimer()
@@ -155,18 +245,14 @@ class AIAgentApp(QMainWindow):
     def init_ui(self):
         """初始化用户界面"""
         self.setWindowTitle("东海帝王AI担当")
-        # 增加一点点高度和宽度，让按钮对齐并保持比例
-        # 原来：1300x800，现在：1350x850
-        # 聊天区域：1000px，右侧区域：350px，高度增加50px
-        window_width = 1350  # 增加50px宽度，主要给聊天区域
-        window_height = 850  # 增加50px高度，让按钮向下移动对齐
-        
+        window_width = 900
+        window_height = 567
+
         self.setGeometry(100, 100, window_width, window_height)
-        
-        # 设置窗口尺寸策略，固定大小不可拖拽
+
         from PySide6.QtWidgets import QSizePolicy
         self.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)
-        self.setFixedSize(window_width, window_height)  # 固定窗口大小
+        self.setFixedSize(window_width, window_height)
         
         # 不为主窗口设置样式表，让调色板控制整体颜色
         
@@ -200,27 +286,29 @@ class AIAgentApp(QMainWindow):
             }
         """)
 
-        # 聊天历史
-        self.chat_history = QTextEdit()
-        self.chat_history.setReadOnly(True)
-        self.chat_history.setStyleSheet("""
-            QTextEdit {
+        # 聊天气泡滚动区域
+        self._chat_scroll = QScrollArea()
+        self._chat_scroll.setWidgetResizable(True)
+        self._chat_scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self._chat_scroll.setStyleSheet("""
+            QScrollArea {
                 background-color: #ffffff;
-                color: #333333;
                 border: 1px solid #e0e0e0;
                 border-top: none;
                 border-radius: 0px 0px 6px 6px;
-                outline: none;
-                padding: 14px;
-                font-family: 'Microsoft YaHei UI', sans-serif;
-                font-size: 14px;
             }
-            QTextEdit:focus {
-                border: 1px solid #e0e0e0;
-                border-top: none;
-                outline: none;
-            }
+            QScrollBar:vertical { width: 6px; background: #f0f0f0; border-radius: 3px; }
+            QScrollBar::handle:vertical { background: #cccccc; border-radius: 3px; }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical { height: 0px; }
         """)
+        self._chat_content_widget = QWidget()
+        self._chat_content_widget.setStyleSheet("background-color: #ffffff;")
+        self._chat_vbox = QVBoxLayout()
+        self._chat_vbox.setSpacing(6)
+        self._chat_vbox.setContentsMargins(8, 8, 8, 8)
+        self._chat_vbox.addStretch(1)
+        self._chat_content_widget.setLayout(self._chat_vbox)
+        self._chat_scroll.setWidget(self._chat_content_widget)
         
         # 输入区域
         input_layout = QHBoxLayout()
@@ -230,7 +318,7 @@ class AIAgentApp(QMainWindow):
         self.input_edit.setPlaceholderText("输入消息，按回车键发送...")
         self.input_edit.setFixedHeight(44)
         self.input_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
-        self.input_edit.send_triggered.connect(self.send_message_shortcut)
+        self.input_edit.send_triggered.connect(self.send_message)
         self.input_edit.setStyleSheet("""
             QTextEdit {
                 background-color: #ffffff;
@@ -245,78 +333,15 @@ class AIAgentApp(QMainWindow):
             }
         """)
 
-        # 图片上传按钮
-        image_btn = QPushButton("📷")
-        image_btn.setToolTip("上传图片")
-        image_btn.clicked.connect(self.send_image)
-        image_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
-                color: #FFFFFF;
-                border: none;
-                border-radius: 6px;
-                padding: 9px 12px;
-                font-weight: bold;
-                font-size: 16px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
-                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC300, stop:1 #2E7D32);
-            }
-        """)
-
-        # 录音按钮（切换开关）- 已禁用，因为现在通过HTTP接口接收STT文本
-        self.record_btn = QPushButton("🎤")
-        self.record_btn.setCheckable(True)  # 设置为可切换状态
-        self.record_btn.setToolTip("语音识别已通过STT服务器处理")
-        self.record_btn.setEnabled(False)  # 禁用按钮
-        self.record_btn.setChecked(False)  # 设置初始状态
-        self.update_record_button_style()  # 更新按钮样式
-
-        send_btn = QPushButton("发送")
-        send_btn.setShortcut("Ctrl+Return")
-        send_btn.clicked.connect(self.send_message)
-        send_btn.setStyleSheet("""
-            QPushButton {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
-                color: #FFFFFF;
-                border: none;
-                border-radius: 8px;
-                padding: 10px 20px;
-                font-weight: bold;
-                font-size: 14px;
-                min-height: 20px;
-            }
-            QPushButton:hover {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
-                box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-            }
-            QPushButton:pressed {
-                background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #8BC300, stop:1 #2E7D32);
-            }
-        """)
-
-        # 添加进度条
+        # 不显示的对象，保留供其他逻辑使用
+        self.record_btn = QPushButton()
+        self.record_btn.setCheckable(True)
+        self.record_btn.setChecked(False)
+        self.record_btn.hide()
         self.progress_bar = QProgressBar()
         self.progress_bar.setVisible(False)
-        self.progress_bar.setStyleSheet("""
-            QProgressBar {
-                border: 2px solid #d0d0d0;
-                border-radius: 5px;
-                text-align: center;
-                background-color: #f0f0f0;
-                color: #333333;
-            }
-            QProgressBar::chunk {
-                background-color: #4a90e2;
-                border-radius: 3px;
-            }
-        """)
 
-        # 输入区白色卡片
+        # 输入区白色卡片（只含输入框）
         input_wrapper = QWidget()
         input_wrapper.setObjectName("inputWrapper")
         input_wrapper.setStyleSheet("""
@@ -326,14 +351,12 @@ class AIAgentApp(QMainWindow):
                 border-radius: 6px;
             }
         """)
+        self.clock_widget = ClockLoadingWidget()
         input_container = QHBoxLayout()
-        input_container.setSpacing(10)
+        input_container.setSpacing(8)
         input_container.setContentsMargins(10, 8, 10, 8)
         input_container.addWidget(self.input_edit)
-        input_container.addWidget(image_btn)
-        input_container.addWidget(self.record_btn)
-        input_container.addWidget(send_btn)
-        input_container.addWidget(self.progress_bar)
+        input_container.addWidget(self.clock_widget)
         input_wrapper.setLayout(input_container)
 
         # 状态栏标签（对应 HTML .status-bar，放在输入框下方）
@@ -342,18 +365,38 @@ class AIAgentApp(QMainWindow):
             "color: #4a90e2; font-size: 12px; padding: 0 4px;"
         )
 
+        # 对话内容子组件
+        chat_content = QWidget()
+        chat_content.setAutoFillBackground(True)
+        self._chat_header = chat_header
         chat_layout.addWidget(chat_header)
-        chat_layout.addWidget(self.chat_history, 1)
+        chat_layout.addWidget(self._chat_scroll, 1)
         chat_layout.addWidget(input_wrapper)
-        chat_layout.addWidget(self.status_label)
-        chat_widget.setLayout(chat_layout)
+        chat_content.setLayout(chat_layout)
+
+        # 竖排按钮列（按钮稍后创建后填入）
+        side_col_widget = QWidget()
+        side_col_widget.setFixedWidth(95)
+        side_col_layout = QVBoxLayout()
+        side_col_layout.setSpacing(6)
+        side_col_layout.setContentsMargins(8, 0, 0, 0)
+        side_col_widget.setLayout(side_col_layout)
+
+        # chat_widget 外层用 HBoxLayout
+        chat_outer = QHBoxLayout()
+        chat_outer.setSpacing(0)
+        chat_outer.setContentsMargins(0, 0, 0, 0)
+        chat_outer.addWidget(chat_content, 1)
+        chat_outer.addWidget(side_col_widget)
+        chat_widget.setLayout(chat_outer)
+        self._side_col_widget = side_col_widget
 
         # 右侧预留区域 (占用1/4宽度，用于Live2D)
         right_widget = QWidget()
         right_widget.setAutoFillBackground(True)  # 启用自动填充背景，使用调色板颜色
         # 不设置样式表，让调色板控制颜色
         right_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
-        right_widget.setFixedWidth(480)
+        right_widget.setFixedWidth(250)
         right_layout = QVBoxLayout()
         right_layout.setSpacing(6)
         right_layout.setContentsMargins(0, 0, 0, 0)
@@ -393,12 +436,15 @@ class AIAgentApp(QMainWindow):
         value_style = "color: #4a90e2; font-size: 13px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
 
         # 值标签
-        self.ai_model  = QLabel(self.config.get("selected_model", "deepseek-reasoner"))
+        self.ai_model   = QLabel(self.config.get("selected_model", "deepseek-reasoner"))
         self.role_value = QLabel("东海帝王")
-        self.ai_memory  = QLabel("记忆系统")
+        self.ai_memory  = QLabel("记忆系统")   # 保留供状态栏更新使用
         self.ai_apps    = QLabel(f"{getattr(self.agent, 'app_count', 0)}")
-        self.ai_time    = QLabel("同步中...")
-        for w in (self.ai_model, self.role_value, self.ai_memory, self.ai_apps, self.ai_time):
+        self.ai_time    = QLabel("--:--:--")
+        self.tts_status = QLabel("检测中...")
+        self.asr_status = QLabel("检测中...")
+        for w in (self.ai_model, self.role_value, self.ai_memory, self.ai_apps,
+                  self.ai_time, self.tts_status, self.asr_status):
             w.setStyleSheet(value_style)
 
         def _make_sep():
@@ -413,7 +459,7 @@ class AIAgentApp(QMainWindow):
             lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
             lbl.setFixedWidth(72)
             row = QHBoxLayout()
-            row.setContentsMargins(0, 4, 0, 4)
+            row.setContentsMargins(0, 2, 0, 2)
             row.setSpacing(8)
             row.addWidget(lbl)
             row.addWidget(value_widget)
@@ -421,13 +467,13 @@ class AIAgentApp(QMainWindow):
 
         status_layout = QVBoxLayout()
         status_layout.setSpacing(0)
-        status_layout.setContentsMargins(14, 6, 14, 6)
+        status_layout.setContentsMargins(14, 3, 14, 3)
         rows = [
-            ("当前模型:", self.ai_model),
+            ("系统时间:", self.ai_time),
             ("角色选择:", self.role_value),
-            ("记忆系统:", self.ai_memory),
-            ("预载应用:", self.ai_apps),
-            ("当前时间:", self.ai_time),
+            ("当前模型:", self.ai_model),
+            ("语音识别:", self.asr_status),
+            ("语音合成:", self.tts_status),
         ]
         for i, (text, widget) in enumerate(rows):
             status_layout.addLayout(_make_row(text, widget))
@@ -447,7 +493,7 @@ class AIAgentApp(QMainWindow):
         live2d_label = QLabel()
         live2d_label.setAlignment(Qt.AlignCenter)
         live2d_label.setScaledContents(False)
-        live2d_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 横向撑满，高度固定
+        live2d_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)  # 横向纵向都撑满
         live2d_label.setStyleSheet("""
             QLabel {
                 background-color: #ffffff;
@@ -460,15 +506,15 @@ class AIAgentApp(QMainWindow):
         try:
             pixmap = QPixmap(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "TokaiTeio.png"))
             if not pixmap.isNull():
-                target_width = 368
-                target_height = 620
+                target_width = 200
+                target_height = 380
 
                 # 缩放图片到目标尺寸，保持宽高比
                 scaled_pixmap = pixmap.scaled(target_width, target_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 live2d_label.setPixmap(scaled_pixmap)
 
                 # 高度固定为图片实际高度，宽度由布局撑满（图片居中显示）
-                live2d_label.setFixedHeight(scaled_pixmap.height())
+                # 不固定高度，让边框撑满右侧面板剩余空间
                 print(f"✅ 成功加载东海帝王半身像，尺寸: {target_width}x{target_height}")
             else:
                 print("❌ 无法加载TokaiTeio.png图片")
@@ -497,10 +543,8 @@ class AIAgentApp(QMainWindow):
                 }
             """)
 
-        # 按钮区域 4列×2行
-        button_layout = QGridLayout()
-        button_layout.setSpacing(6)
-        button_layout.setContentsMargins(0, 0, 0, 0)
+        # 按钮区域（竖排，加入对话区右侧列）
+        button_layout = side_col_layout  # 复用 side_col_layout
 
         # 设置按钮
         settings_btn = QPushButton("设置")
@@ -684,24 +728,16 @@ class AIAgentApp(QMainWindow):
         """)
         compact_btn.clicked.connect(self.enter_compact_mode)
 
-        # 第一排：游戏模式 陪伴模式 悬浮窗模式 多模态
-        button_layout.addWidget(self.game_mode_btn, 0, 0)
-        button_layout.addWidget(companion_btn,      0, 1)
-        button_layout.addWidget(compact_btn,        0, 2)
-        button_layout.addWidget(self.multimodal_btn, 0, 3)
-        # 第二排：记忆系统 设置 测试 测试事件
-        button_layout.addWidget(memory_btn,    1, 0)
-        button_layout.addWidget(settings_btn,  1, 1)
-        button_layout.addWidget(test_btn,      1, 2)
-        button_layout.addWidget(test_event_btn, 1, 3)
+        # 竖排：8个按钮，上下居中
+        button_layout.addStretch(1)
+        for btn in (self.game_mode_btn, companion_btn, compact_btn, self.multimodal_btn,
+                    memory_btn, settings_btn, test_btn, test_event_btn):
+            button_layout.addWidget(btn)
+        button_layout.addStretch(1)
 
-        btn_container = QWidget()
-        btn_container.setLayout(button_layout)
-        btn_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
-
+        status_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
         right_layout.addWidget(status_container)
-        right_layout.addWidget(live2d_label)
-        right_layout.addWidget(btn_container)
+        right_layout.addWidget(live2d_label, 1)
         right_widget.setLayout(right_layout)
 
         # 精简模式按钮栏（默认隐藏）
@@ -725,11 +761,13 @@ class AIAgentApp(QMainWindow):
         self._compact_game_btn.setCheckable(True)
         self._compact_game_btn.setStyleSheet("""
             QPushButton {
-                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #66BB6A,stop:1 #388E3C);
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #42A5F5,stop:1 #1565C0);
                 color:#FFF; border:none; border-radius:8px;
                 padding:8px 12px; font-weight:bold; font-size:13px;
             }
-            QPushButton:hover { background:#4CAF50; }
+            QPushButton:hover {
+                background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #1E88E5,stop:1 #0D47A1);
+            }
             QPushButton:checked {
                 background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #FFA726,stop:1 #E65100);
             }
@@ -747,8 +785,8 @@ class AIAgentApp(QMainWindow):
         """)
         fullscreen_btn.clicked.connect(self.exit_compact_mode)
 
-        compact_bar_layout.addWidget(compact_companion_btn)
         compact_bar_layout.addWidget(self._compact_game_btn)
+        compact_bar_layout.addWidget(compact_companion_btn)
         compact_bar_layout.addStretch()
         compact_bar_layout.addWidget(fullscreen_btn)
         self._compact_bar.setLayout(compact_bar_layout)
@@ -759,14 +797,14 @@ class AIAgentApp(QMainWindow):
         # 添加分割器
         self._splitter = QSplitter(Qt.Horizontal)
         self._right_widget = right_widget
-        self._splitter.addWidget(chat_widget)
         self._splitter.addWidget(right_widget)
-        self._splitter.setSizes([850, 480])
+        self._splitter.addWidget(chat_widget)
+        self._splitter.setSizes([250, 567])
         self._splitter.setChildrenCollapsible(False)
         self._splitter.setHandleWidth(12)
         self._splitter.setStyleSheet("QSplitter::handle { background: transparent; }")
-        self._splitter.setStretchFactor(0, 1)
-        self._splitter.setStretchFactor(1, 0)
+        self._splitter.setStretchFactor(0, 0)
+        self._splitter.setStretchFactor(1, 1)
 
         main_layout.addWidget(self._splitter)
         main_widget.setLayout(main_layout)
@@ -786,35 +824,84 @@ class AIAgentApp(QMainWindow):
         else:
             self.add_message("系统", "输入消息创建新的会话")
 
-    def add_message(self, sender, message):
-        """添加消息到聊天历史"""
-        print(f"📝 add_message被调用，发送者: {sender}, 消息: {message}")
+    def _make_bubble(self, sender: str, text: str, timestamp: str = None) -> tuple:
+        """创建气泡容器和气泡标签，返回 (container, label)"""
+        if timestamp is None:
+            timestamp = datetime.datetime.now().strftime("%H:%M:%S")
 
-        # 检查chat_history是否可见
-        print(f"👁️ chat_history是否可见: {self.chat_history.isVisible()}")
-        print(f"👁️ chat_history是否启用: {self.chat_history.isEnabled()}")
-
-        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-        formatted_msg = f"[{timestamp}] {sender}: {message}\n"
-        
-        # 获取当前文本并添加新消息
-        current_text = self.chat_history.toPlainText()
-        print(f"📄 当前聊天历史长度: {len(current_text)}")
-        new_text = current_text + formatted_msg
-        print(f"📄 新聊天历史长度: {len(new_text)}")
-        self.chat_history.setPlainText(new_text)
-        print(f"✅ 文本已设置到chat_history")
-        
-        # 滚动到底部
-        self.chat_history.verticalScrollBar().setValue(
-            self.chat_history.verticalScrollBar().maximum()
+        # 时间 + 发送者标签
+        meta = timestamp if sender == "系统" else f"{sender}  {timestamp}"
+        time_lbl = QLabel(meta)
+        time_lbl.setStyleSheet(
+            "color: #aaaaaa; font-size: 11px; background-color: transparent;"
+            " font-family: 'Microsoft YaHei UI', sans-serif;"
         )
 
-        # 验证文本是否正确设置
-        actual_text = self.chat_history.toPlainText()
-        print(f"📄 实际聊天历史长度: {len(actual_text)}")
-        if len(actual_text) != len(new_text):
-            print("⚠️ 文本设置失败！")
+        # 气泡
+        bubble = BubbleLabel(text)
+        bubble.setTextInteractionFlags(Qt.TextSelectableByMouse)
+
+        if sender == "系统":
+            bubble.setStyleSheet("""
+                QLabel {
+                    background-color: #ffffff;
+                    color: #555555;
+                    border: 1px solid #888888;
+                    border-radius: 8px;
+                    padding: 6px 10px;
+                    font-size: 12px;
+                    font-family: 'Microsoft YaHei UI', sans-serif;
+                }
+            """)
+        elif sender == "训练员":
+            bubble.setStyleSheet("""
+                QLabel {
+                    background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #42A5F5,stop:1 #1565C0);
+                    color: #ffffff;
+                    border-radius: 10px;
+                    padding: 8px 12px;
+                    font-size: 13px;
+                    font-family: 'Microsoft YaHei UI', sans-serif;
+                }
+            """)
+        else:  # 东海帝王
+            bubble.setStyleSheet("""
+                QLabel {
+                    background: qlineargradient(x1:0,y1:0,x2:0,y2:1,stop:0 #F06292,stop:1 #C2185B);
+                    color: #ffffff;
+                    border-radius: 10px;
+                    padding: 8px 12px;
+                    font-size: 13px;
+                    font-family: 'Microsoft YaHei UI', sans-serif;
+                }
+            """)
+
+        container = QWidget()
+        container.setStyleSheet("background-color: #ffffff;")
+        v = QVBoxLayout()
+        v.setSpacing(2)
+        v.setContentsMargins(10, 2, 10, 2)
+        v.addWidget(time_lbl, 0, Qt.AlignLeft)
+        if sender == "系统":
+            v.addWidget(bubble)
+        else:
+            v.addWidget(bubble, 0, Qt.AlignLeft)
+        container.setLayout(v)
+
+        return container, bubble
+
+    def _append_bubble(self, container: QWidget):
+        """将气泡容器插入到 vbox 末尾（stretch 之前）并滚动到底"""
+        count = self._chat_vbox.count()
+        self._chat_vbox.insertWidget(count - 1, container)
+        QTimer.singleShot(50, lambda: self._chat_scroll.verticalScrollBar().setValue(
+            self._chat_scroll.verticalScrollBar().maximum()))
+
+    def add_message(self, sender, message):
+        """添加消息气泡到聊天区域"""
+        timestamp = datetime.datetime.now().strftime("%H:%M:%S")
+        container, _ = self._make_bubble(sender, message, timestamp)
+        self._append_bubble(container)
 
     def send_image(self):
         """上传并分析图片"""
@@ -828,22 +915,7 @@ class AIAgentApp(QMainWindow):
         if file_path:
             self.add_message("训练员", f"📷 上传图片: {file_path}")
 
-            # 显示进度条
-            self.progress_bar.setVisible(True)
-            self.progress_bar.setRange(0, 100)
-            self.progress_bar.setValue(0)
-            self.progress_bar.setFormat("分析图片中... 0%")
-
-            # 启动进度条更新定时器
-            self.progress_timer = QTimer()
-            self.progress_timer.timeout.connect(self.update_progress)
-            self.progress_timer.start(30)
-            self.progress_value = 0
-
-            # 添加超时保护
-            self.timeout_timer = QTimer()
-            self.timeout_timer.timeout.connect(self.handle_timeout)
-            self.timeout_timer.start(15000)  # 15秒超时，与AI代理的10秒超时保持一致，留5秒余量
+            self.clock_widget.start()
 
             # 在单独的线程中处理图片分析（使用asyncio）
             threading.Thread(target=self._run_async_image_analysis, args=(file_path,), daemon=True).start()
@@ -922,22 +994,7 @@ class AIAgentApp(QMainWindow):
         self.input_edit.clear()
         print("✅ 输入框已清空")
 
-        # 显示进度条
-        self.progress_bar.setVisible(True)
-        self.progress_bar.setRange(0, 100)
-        self.progress_bar.setValue(0)
-        self.progress_bar.setFormat("处理中... 0%")
-
-        # 启动进度条更新定时器
-        self.progress_timer = QTimer()
-        self.progress_timer.timeout.connect(self.update_progress)
-        self.progress_timer.start(30)  # 每30毫秒更新一次，更平滑
-        self.progress_value = 0
-        
-        # 添加超时保护，防止进度条无限卡住
-        self.timeout_timer = QTimer()
-        self.timeout_timer.timeout.connect(self.handle_timeout)
-        self.timeout_timer.start(15000)  # 15秒超时，与AI代理的10秒超时保持一致，留5秒余量
+        self.clock_widget.start()
 
         # 在单独的线程中处理响应（使用asyncio）
         threading.Thread(target=self._run_async_response, args=(user_input,), daemon=True).start()
@@ -1057,75 +1114,32 @@ class AIAgentApp(QMainWindow):
         """在主线程中更新UI"""
         print(f"🔄 开始更新UI: {response[:50]}...")
 
-        # 检查是否是流式文本块（以特殊标记开头）
+        # 流式文本块
         if response.startswith("STREAM_CHUNK:"):
-            # 提取流式文本块内容
             chunk = response[len("STREAM_CHUNK:"):]
-            print(f"📝 处理流式文本块: {chunk}")
-            
-            # 检查是否是第一条流式文本
+
             if not hasattr(self, '_current_streaming_response'):
                 self._current_streaming_response = ""
-                # 添加初始消息到聊天历史
-                timestamp = datetime.datetime.now().strftime("%H:%M:%S")
-                formatted_msg = f"[{timestamp}] 东海帝王: "
-                self.chat_history.setPlainText(self.chat_history.toPlainText() + formatted_msg)
-            
-            # 追加流式文本到当前消息
+                ts = datetime.datetime.now().strftime("%H:%M:%S")
+                container, self._streaming_bubble = self._make_bubble("东海帝王", "", ts)
+                self._append_bubble(container)
+
             self._current_streaming_response += chunk
-            current_text = self.chat_history.toPlainText()
-            self.chat_history.setPlainText(current_text + chunk)
-            
-            # 滚动到底部
-            self.chat_history.verticalScrollBar().setValue(
-                self.chat_history.verticalScrollBar().maximum()
-            )
+            self._streaming_bubble.setText(self._current_streaming_response)
+            QTimer.singleShot(10, lambda: self._chat_scroll.verticalScrollBar().setValue(
+                self._chat_scroll.verticalScrollBar().maximum()))
             return
-            
-        # 检查是否是流式完成信号
+
+        # 流式完成
         if response == "STREAM_COMPLETE":
-            print(f"✅ 流式回复完成")
-            
-            # 添加回车到流式回复末尾
             if hasattr(self, '_current_streaming_response'):
-                current_text = self.chat_history.toPlainText()
-                self.chat_history.setPlainText(current_text + "\n")
-                # 清除流式回复状态
                 delattr(self, '_current_streaming_response')
-            
-            # 停止所有定时器
-            if hasattr(self, 'progress_timer'):
-                self.progress_timer.stop()
-            if hasattr(self, 'timeout_timer'):
-                self.timeout_timer.stop()
-
-            # 立即完成进度条
-            self.progress_bar.setValue(100)
-            self.progress_bar.setFormat("完成")
-
-            # 延迟隐藏进度条
-            QTimer.singleShot(800, lambda: self.progress_bar.setVisible(False))
+                self._streaming_bubble = None
+            self.clock_widget.stop()
             return
         
-        # 停止所有定时器
-        if hasattr(self, 'progress_timer'):
-            self.progress_timer.stop()
-        if hasattr(self, 'timeout_timer'):
-            self.timeout_timer.stop()
-        
-        # 立即完成进度条
-        self.progress_bar.setValue(100)
-        self.progress_bar.setFormat("完成")
-        
-        # 添加消息到聊天历史
-        print(f"📝 添加消息到聊天历史: 东海帝王 - {response[:50]}...")
+        self.clock_widget.stop()
         self.add_message("东海帝王", response)
-
-        # 播放TTS - 已注释，避免与text_queue_manager重复调用
-        # self._play_tts(response)
-        
-        # 延迟隐藏进度条
-        QTimer.singleShot(800, lambda: self.progress_bar.setVisible(False))
 
     def handle_timeout(self):
         """处理超时"""
@@ -1323,28 +1337,50 @@ class AIAgentApp(QMainWindow):
 
     def update_status(self):
         """更新状态"""
-        # 更新记忆系统状态
+        # 实时时间（每秒更新本地时间）
+        self.ai_time.setText(datetime.datetime.now().strftime("%H:%M:%S"))
+
+        # 记忆系统状态
         mem_status = "开发者模式" if getattr(self.agent, 'developer_mode', False) else "正常"
         self.ai_memory.setText(mem_status)
 
-        # 更新时间（每5秒同步一次网络时间）
-        if hasattr(self, 'time_sync_counter'):
-            self.time_sync_counter += 1
-        else:
-            self.time_sync_counter = 0
-        
-        if self.time_sync_counter % 5 == 0:  # 每5次更新同步一次网络时间
-            self.sync_time()
-        else:
-            # 使用本地时间更新
-            current_time = datetime.datetime.now()
-            time_str = current_time.strftime("%H:%M:%S")
-            self.ai_time.setText(time_str)
+        # 每10秒检测一次 TTS / ASR 连接
+        if not hasattr(self, '_status_counter'):
+            self._status_counter = 0
+        self._status_counter += 1
+        if self._status_counter % 10 == 1:   # 启动后立即检测，之后每10秒一次
+            threading.Thread(target=self._check_tts_status, daemon=True).start()
+            threading.Thread(target=self._check_asr_status, daemon=True).start()
 
-        # 更新状态栏
-        time_str = self.ai_time.text()
-        self.status_label.setText(
-            f"就绪 | 模型: {self.config.get('selected_model', 'deepseek-reasoner')} | 记忆系统: {mem_status} | {time_str}")
+    def _check_tts_status(self):
+        import socket
+        try:
+            s = socket.create_connection(("localhost", 9880), timeout=0.5)
+            s.close()
+            self._tts_checked.emit("就绪", "#4a90e2")
+        except Exception:
+            self._tts_checked.emit("连接失败", "#e53935")
+
+    def _check_asr_status(self):
+        import socket
+        try:
+            s = socket.create_connection(("localhost", 8765), timeout=0.5)
+            s.close()
+            self._asr_checked.emit("就绪", "#4a90e2")
+        except Exception:
+            self._asr_checked.emit("连接失败", "#e53935")
+
+    def _apply_tts_status(self, text: str, color: str):
+        self.tts_status.setText(text)
+        self.tts_status.setStyleSheet(
+            f"color: {color}; font-size: 13px; font-weight: bold;"
+            " font-family: 'Microsoft YaHei', 'SimHei', sans-serif;")
+
+    def _apply_asr_status(self, text: str, color: str):
+        self.asr_status.setText(text)
+        self.asr_status.setStyleSheet(
+            f"color: {color}; font-size: 13px; font-weight: bold;"
+            " font-family: 'Microsoft YaHei', 'SimHei', sans-serif;")
 
     def closeEvent(self, event):
         """程序退出时的处理"""
@@ -1428,18 +1464,22 @@ class AIAgentApp(QMainWindow):
         self._normal_size = self.size()
         self._normal_pos = self.pos()
         self._right_widget.hide()
+        self._side_col_widget.hide()
+        self._chat_header.hide()
         self._compact_bar.show()
         # setWindowFlag 不重建窗口句柄，避免任务栏条目失效
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
-        self.setFixedSize(520, 420)
+        self.setFixedSize(347, 280)
         self.show()
 
     def exit_compact_mode(self):
         """退出悬浮窗，恢复大屏"""
         self._compact_bar.hide()
+        self._chat_header.show()
+        self._side_col_widget.show()
         self._right_widget.show()
         self.setWindowFlag(Qt.WindowStaysOnTopHint, False)
-        self.setFixedSize(self._normal_size)
+        self.setFixedSize(900, 567)
         if hasattr(self, '_normal_pos'):
             self.move(self._normal_pos)
         if self.isMinimized():

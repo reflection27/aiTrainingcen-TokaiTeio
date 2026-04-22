@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(du -sh G:/gpt-sovits/v2/agent/main/*)",
+      "Bash(cp:*)",
+      "Bash(cmd.exe:*)",
+      "Bash(powershell:*)",
+      "Bash(mkdir -p /c/tmp)",
+      "Read(//c/tmp/**)",
+      "Bash(\"G:/gpt-sovits/v2/agent/main/plugins/GPT-SoVITS/runtime/python.exe\" -m pip install \"tokenizers==0.19.0\")",
+      "Bash(echo \"exit: $?\")",
+      "Bash(G:/gpt-sovits/v2/agent/main/venv/Scripts/python.exe:*)",
+      "Bash(G:/gpt-sovits/v2/agent/main/venv/Scripts/pip.exe install:*)",
+      "Bash(echo \"安装中，PID: $!\")",
+      "Bash(echo \"删除中 PID: $!\")"
+    ]
+  }
+}
