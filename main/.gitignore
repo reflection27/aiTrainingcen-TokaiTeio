@@ -58,6 +58,7 @@ Thumbs.db
 
 # 插件和预训练模型
 main/plugins/x/
+plugins/RealtimeSTT-master/
 
 # Godot 可执行文件（体积过大，超过 GitHub 100MB 限制）
 plugins/godot/Godot_v4.6.2-stable_win64.exe/

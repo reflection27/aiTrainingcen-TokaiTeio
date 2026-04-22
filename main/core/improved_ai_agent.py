@@ -143,9 +143,8 @@ class ImprovedAIAgent:
 
     def _register_default_tools(self):
         """注册默认工具"""
-        from core.tool_manager import WeatherTool, SearchTool, MusicTool
+        from core.tool_manager import SearchTool, MusicTool
 
-        self.tool_manager.register_tool(WeatherTool(), "system")
         self.tool_manager.register_tool(SearchTool(), "search")
         self.tool_manager.register_tool(MusicTool(), "media")
 

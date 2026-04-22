@@ -16,10 +16,6 @@ def load_config():
     default_config = {
         "openai_key": "",
         "deepseek_key": "",
-        "weather_key": "",
-        "heweather_key": "",
-        "amap_key": "",  # 用户需要在设置中配置自己的API密钥
-        "weather_source": "高德地图API",
         "default_browser": "",  # 默认浏览器
         "default_search_engine": "baidu",  # 默认搜索引擎
         "selected_model": "deepseek-reasoner",

@@ -857,8 +857,8 @@ class MemoryDialog(QDialog):
         try:
             s = self.memory.get_memory_stats()
             self.stats_label.setText(
-                f"对话条数: {s['total_conversations']}  |  "
                 f"会话数: {s['total_sessions']}  |  "
+                f"对话条数: {s['total_conversations']}  |  "
                 f"知识条目: {s['total_knowledge']}"
             )
         except Exception as e:
@@ -879,10 +879,17 @@ class MemoryDialog(QDialog):
                 self.session_combo.addItem(label, userData=s['session_id'])
             # 默认选中当前 agent 会话
             if current_sid:
+                found = False
                 for i in range(self.session_combo.count()):
                     if self.session_combo.itemData(i) == current_sid:
                         self.session_combo.setCurrentIndex(i)
+                        found = True
                         break
+                # 新会话（0条对话）不在 DB 里，手动保留在首位
+                if not found:
+                    label = f"新会话  (0 条)  [{current_sid[:8]}...]"
+                    self.session_combo.insertItem(0, label, userData=current_sid)
+                    self.session_combo.setCurrentIndex(0)
         except Exception as e:
             print(f"加载会话列表失败: {e}")
         self.session_combo.blockSignals(False)
@@ -903,11 +910,21 @@ class MemoryDialog(QDialog):
             return
         new_sid = self.agent.new_session()
         self._load_session_list()
-        # 选中新会话
+        # 在已有列表里找新会话
+        found = False
         for i in range(self.session_combo.count()):
             if self.session_combo.itemData(i) == new_sid:
                 self.session_combo.setCurrentIndex(i)
+                found = True
                 break
+        # 新会话无对话记录时 get_all_sessions 不会返回它，手动插入首位
+        if not found:
+            self.session_combo.blockSignals(True)
+            label = f"新会话  (0 条)  [{new_sid[:8]}...]"
+            self.session_combo.insertItem(0, label, userData=new_sid)
+            self.session_combo.setCurrentIndex(0)
+            self.session_combo.blockSignals(False)
+            self._on_session_selected()
         self.refresh_stats()
 
     def _switch_session(self):

@@ -71,21 +71,6 @@ class ToolManager:
         }
 
 # 示例工具实现
-class WeatherTool(BaseTool):
-    """天气查询工具"""
-
-    def __init__(self):
-        super().__init__(
-            name="weather",
-            description="查询天气信息"
-        )
-
-    async def execute(self, location: str = "北京") -> str:
-        """查询天气"""
-        # 这里可以调用实际的天气API
-        await asyncio.sleep(0.5)  # 模拟API调用
-        return f"今天{location}的天气是晴天，温度25°C"
-
 class SearchTool(BaseTool):
     """搜索工具"""
 
@@ -141,15 +126,10 @@ if __name__ == "__main__":
         manager = ToolManager()
 
         # 注册工具
-        manager.register_tool(WeatherTool(), "system")
         manager.register_tool(SearchTool(), "search")
         manager.register_tool(MusicTool(), "media")
 
         # 列出所有工具
         print("所有工具:", manager.list_all_tools())
-
-        # 执行工具
-        result = await manager.execute_tool("weather", location="上海")
-        print("天气查询结果:", result)
 
     asyncio.run(main())

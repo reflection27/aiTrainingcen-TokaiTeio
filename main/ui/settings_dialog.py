@@ -212,25 +212,6 @@ class SettingsDialog(QDialog):
         self.deepseek_key_edit.setPlaceholderText("输入DeepSeek API密钥")
         api_layout.addRow("DeepSeek API密钥:", self.deepseek_key_edit)
 
-        self.weather_key_edit = QLineEdit()
-        self.weather_key_edit.setText(self.config.get("heweather_key", ""))
-        self.weather_key_edit.setPlaceholderText("输入和风天气API密钥")
-        api_layout.addRow("和风天气API密钥:", self.weather_key_edit)
-
-        self.amap_key_edit = QLineEdit()
-        self.amap_key_edit.setText(self.config.get("amap_key", ""))
-        self.amap_key_edit.setPlaceholderText("输入高德地图API密钥")
-        api_layout.addRow("高德地图API密钥:", self.amap_key_edit)
-
-        # 天气数据来源设置
-        self.weather_source_combo = QComboBox()
-        self.weather_source_combo.addItems(["和风天气API", "高德地图API"])
-        current_source = self.config.get("weather_source", "和风天气API")
-        index = self.weather_source_combo.findText(current_source)
-        if index >= 0:
-            self.weather_source_combo.setCurrentIndex(index)
-        api_layout.addRow("天气数据来源:", self.weather_source_combo)
-
         api_group.setLayout(api_layout)
 
         # 浏览器设置
@@ -706,9 +687,6 @@ class SettingsDialog(QDialog):
         # API设置
         self.config["openai_key"] = self.openai_key_edit.text()
         self.config["deepseek_key"] = self.deepseek_key_edit.text()
-        self.config["heweather_key"] = self.weather_key_edit.text()
-        self.config["amap_key"] = self.amap_key_edit.text()
-        self.config["weather_source"] = self.weather_source_combo.currentText()
 
         # 浏览器设置
         self.config["default_browser"] = self.default_browser_combo.currentText()

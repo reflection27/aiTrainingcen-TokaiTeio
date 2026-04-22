@@ -1,10 +1,6 @@
 {
   "openai_key": "",
   "deepseek_key": "",
-  "weather_key": "",
-  "heweather_key": "",
-  "amap_key": "",
-  "weather_source": "高德地图API",
   "selected_model": "deepseek-chat",
   "glm4v_base_url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
   "default_model": "glm-4v-flash",
@@ -24,11 +20,7 @@
     "youtube": "https://www.youtube.com"
   },
   "app_map": {},
-  "mcp_servers": {
-    "高德": {
-      "type": "SSE"
-    }
-  },
+  "mcp_servers": {},
   "default_browser": "默认浏览器",
   "default_search_engine": "google",
   "max_tokens": 0,

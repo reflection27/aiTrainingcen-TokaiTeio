@@ -6,12 +6,26 @@ import threading
 from PySide6.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QHBoxLayout, QTextEdit, QLineEdit, QPushButton,
                              QLabel, QProgressBar, QSplitter, QGroupBox,
-                             QFormLayout, QStatusBar, QFileDialog, QDialog, QSizePolicy, QMenu,
+                             QFileDialog, QDialog, QSizePolicy, QMenu,
                              QGridLayout, QFrame)
 from PySide6.QtCore import Qt, QTimer, Signal
-from PySide6.QtGui import QFont, QPixmap
+from PySide6.QtGui import QFont, QPixmap, QKeyEvent
 
 from core.improved_ai_agent import ImprovedAIAgent
+
+
+class ChatInputEdit(QTextEdit):
+    """支持回车发送、Shift+回车换行的输入框"""
+    send_triggered = Signal()
+
+    def keyPressEvent(self, event: QKeyEvent):
+        if event.key() in (Qt.Key_Return, Qt.Key_Enter):
+            if event.modifiers() & Qt.ShiftModifier:
+                super().keyPressEvent(event)   # Shift+Enter → 换行
+            else:
+                self.send_triggered.emit()      # Enter → 发送
+        else:
+            super().keyPressEvent(event)
 from ui.ui_dialogs import MemoryDialog
 from ui.settings_dialog import SettingsDialog
 from core.config import load_config
@@ -89,7 +103,7 @@ class AIAgentApp(QMainWindow):
         # 如果识别到的文本不为空，则发送消息
         if text and text.strip():
             # 将识别到的文本添加到输入框
-            self.input_edit.setText(text.strip())
+            self.input_edit.setPlainText(text.strip())
             # 自动发送消息
             self.send_message()
 
@@ -160,8 +174,8 @@ class AIAgentApp(QMainWindow):
         main_widget = QWidget()
         main_widget.setAutoFillBackground(True)  # 启用自动填充背景，使用调色板颜色
         main_layout = QVBoxLayout()
-        main_layout.setSpacing(10)
-        main_layout.setContentsMargins(10, 10, 10, 10)
+        main_layout.setSpacing(0)
+        main_layout.setContentsMargins(39, 12, 39, 12)
         
         # 聊天区域 (占用3/4宽度)
         chat_widget = QWidget()
@@ -170,7 +184,7 @@ class AIAgentApp(QMainWindow):
         chat_widget.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
         chat_layout = QVBoxLayout()
         chat_layout.setSpacing(10)
-        chat_layout.setContentsMargins(10, 10, 10, 10)
+        chat_layout.setContentsMargins(0, 0, 0, 0)
         
         # 聊天区标题
         chat_header = QLabel("聊天记录")
@@ -197,7 +211,7 @@ class AIAgentApp(QMainWindow):
                 border-top: none;
                 border-radius: 0px 0px 6px 6px;
                 outline: none;
-                padding: 10px;
+                padding: 14px;
                 font-family: 'Microsoft YaHei UI', sans-serif;
                 font-size: 14px;
             }
@@ -212,19 +226,21 @@ class AIAgentApp(QMainWindow):
         input_layout = QHBoxLayout()
         input_layout.setSpacing(10)
         
-        self.input_edit = QLineEdit()
+        self.input_edit = ChatInputEdit()
         self.input_edit.setPlaceholderText("输入消息，按回车键发送...")
-        self.input_edit.returnPressed.connect(self.send_message_shortcut)
+        self.input_edit.setFixedHeight(44)
+        self.input_edit.setVerticalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+        self.input_edit.send_triggered.connect(self.send_message_shortcut)
         self.input_edit.setStyleSheet("""
-            QLineEdit {
+            QTextEdit {
                 background-color: #ffffff;
                 color: #333333;
                 border: 1px solid #d0d0d0;
-                border-radius: 15px;
-                padding: 10px 15px;
+                border-radius: 20px;
+                padding: 9px 16px;
                 font-size: 14px;
             }
-            QLineEdit:focus {
+            QTextEdit:focus {
                 border: 2px solid #4a90e2;
             }
         """)
@@ -238,10 +254,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 8px 12px;
+                border-radius: 6px;
+                padding: 9px 12px;
                 font-weight: bold;
-                font-size: 14px;
+                font-size: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
@@ -320,9 +336,16 @@ class AIAgentApp(QMainWindow):
         input_container.addWidget(self.progress_bar)
         input_wrapper.setLayout(input_container)
 
+        # 状态栏标签（对应 HTML .status-bar，放在输入框下方）
+        self.status_label = QLabel("就绪")
+        self.status_label.setStyleSheet(
+            "color: #4a90e2; font-size: 12px; padding: 0 4px;"
+        )
+
         chat_layout.addWidget(chat_header)
         chat_layout.addWidget(self.chat_history, 1)
         chat_layout.addWidget(input_wrapper)
+        chat_layout.addWidget(self.status_label)
         chat_widget.setLayout(chat_layout)
 
         # 右侧预留区域 (占用1/4宽度，用于Live2D)
@@ -330,9 +353,10 @@ class AIAgentApp(QMainWindow):
         right_widget.setAutoFillBackground(True)  # 启用自动填充背景，使用调色板颜色
         # 不设置样式表，让调色板控制颜色
         right_widget.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Expanding)
+        right_widget.setFixedWidth(480)
         right_layout = QVBoxLayout()
-        right_layout.setSpacing(8)
-        right_layout.setContentsMargins(10, 8, 10, 8)
+        right_layout.setSpacing(6)
+        right_layout.setContentsMargins(0, 0, 0, 0)
 
         # 状态信息卡片
         status_container = QWidget()
@@ -365,68 +389,51 @@ class AIAgentApp(QMainWindow):
             }
         """)
 
-        status_layout = QFormLayout()
-        status_layout.setVerticalSpacing(8)
-        status_layout.setHorizontalSpacing(8)
-        status_layout.setContentsMargins(10, 16, 10, 8)
+        label_style = "color: #888888; font-size: 13px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
+        value_style = "color: #4a90e2; font-size: 13px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
 
-        # 设置标签样式
-        status_layout.setLabelAlignment(Qt.AlignRight)
-
-        # 创建标签样式
-        label_style = "color: #333333; font-size: 14px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
-        value_style = "color: #4a90e2; font-size: 14px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
-        
-        # 当前模型
-        model_label = QLabel("当前模型:")
-        model_label.setStyleSheet(label_style)
-        model_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.ai_model = QLabel(self.config.get("selected_model", "deepseek-reasoner"))
-        self.ai_model.setStyleSheet(value_style)
-        status_layout.addRow(model_label, self.ai_model)
-
-
-        # 角色选择
-        role_label = QLabel("角色选择:")
-        role_label.setStyleSheet(label_style)
-        role_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-
+        # 值标签
+        self.ai_model  = QLabel(self.config.get("selected_model", "deepseek-reasoner"))
         self.role_value = QLabel("东海帝王")
-        self.role_value.setStyleSheet(value_style)
-        status_layout.addRow(role_label, self.role_value)
+        self.ai_memory  = QLabel("记忆系统")
+        self.ai_apps    = QLabel(f"{getattr(self.agent, 'app_count', 0)}")
+        self.ai_time    = QLabel("同步中...")
+        for w in (self.ai_model, self.role_value, self.ai_memory, self.ai_apps, self.ai_time):
+            w.setStyleSheet(value_style)
 
-        # 记忆系统
-        memory_label = QLabel("记忆系统:")
-        memory_label.setStyleSheet(label_style)
-        memory_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.ai_memory = QLabel("记忆系统")
-        self.ai_memory.setStyleSheet(value_style)
-        status_layout.addRow(memory_label, self.ai_memory)
+        def _make_sep():
+            sep = QFrame()
+            sep.setFixedHeight(1)
+            sep.setStyleSheet("background-color: #f0f0f0; border: none;")
+            return sep
 
-        # 预加载应用
-        apps_label = QLabel(" 预载应用:")  # 在开头添加一个空格，向右移动一个字节
-        apps_label.setStyleSheet(label_style)
-        apps_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # 确保右对齐和垂直居中
-        self.ai_apps = QLabel(f"{getattr(self.agent, 'app_count', 0)}")
-        self.ai_apps.setStyleSheet(value_style)
-        status_layout.addRow(apps_label, self.ai_apps)
+        def _make_row(text, value_widget):
+            lbl = QLabel(text)
+            lbl.setStyleSheet(label_style)
+            lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+            lbl.setFixedWidth(72)
+            row = QHBoxLayout()
+            row.setContentsMargins(0, 4, 0, 4)
+            row.setSpacing(8)
+            row.addWidget(lbl)
+            row.addWidget(value_widget)
+            return row
 
-        # 登录位置信息已隐藏
-        # location_label = QLabel("登录位置:")
-        # location_label.setStyleSheet(label_style)
-        # location_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        # self.ai_location = QLabel(getattr(self.agent, 'location', '未知'))
-        # self.ai_location.setStyleSheet(value_style)
-        # status_layout.addRow(location_label, self.ai_location)
+        status_layout = QVBoxLayout()
+        status_layout.setSpacing(0)
+        status_layout.setContentsMargins(14, 6, 14, 6)
+        rows = [
+            ("当前模型:", self.ai_model),
+            ("角色选择:", self.role_value),
+            ("记忆系统:", self.ai_memory),
+            ("预载应用:", self.ai_apps),
+            ("当前时间:", self.ai_time),
+        ]
+        for i, (text, widget) in enumerate(rows):
+            status_layout.addLayout(_make_row(text, widget))
+            if i < len(rows) - 1:
+                status_layout.addWidget(_make_sep())
 
-        # 当前时间
-        time_label = QLabel("当前时间:")
-        time_label.setStyleSheet(label_style)
-        time_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
-        self.ai_time = QLabel("同步中...")
-        self.ai_time.setStyleSheet(value_style)
-        status_layout.addRow(time_label, self.ai_time)
-        
         # 启动时间同步
         self.sync_time()
 
@@ -439,8 +446,8 @@ class AIAgentApp(QMainWindow):
         # 东海帝王半身像区域
         live2d_label = QLabel()
         live2d_label.setAlignment(Qt.AlignCenter)
-        live2d_label.setScaledContents(False)  # 不自动缩放，保持原始比例
-        live2d_label.setSizePolicy(QSizePolicy.Fixed, QSizePolicy.Fixed)  # 固定尺寸，防止拉伸
+        live2d_label.setScaledContents(False)
+        live2d_label.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)  # 横向撑满，高度固定
         live2d_label.setStyleSheet("""
             QLabel {
                 background-color: #ffffff;
@@ -453,15 +460,15 @@ class AIAgentApp(QMainWindow):
         try:
             pixmap = QPixmap(os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "assets", "TokaiTeio.png"))
             if not pixmap.isNull():
-                target_width = 270
-                target_height = int(target_width * 16 / 9)
-                
+                target_width = 368
+                target_height = 620
+
                 # 缩放图片到目标尺寸，保持宽高比
                 scaled_pixmap = pixmap.scaled(target_width, target_height, Qt.KeepAspectRatio, Qt.SmoothTransformation)
                 live2d_label.setPixmap(scaled_pixmap)
-                
-                # 设置固定尺寸，确保不与其他元素重合
-                live2d_label.setFixedSize(target_width, target_height)  # 使用固定尺寸，防止挤压其他元素
+
+                # 高度固定为图片实际高度，宽度由布局撑满（图片居中显示）
+                live2d_label.setFixedHeight(scaled_pixmap.height())
                 print(f"✅ 成功加载东海帝王半身像，尺寸: {target_width}x{target_height}")
             else:
                 print("❌ 无法加载TokaiTeio.png图片")
@@ -493,6 +500,7 @@ class AIAgentApp(QMainWindow):
         # 按钮区域 4列×2行
         button_layout = QGridLayout()
         button_layout.setSpacing(6)
+        button_layout.setContentsMargins(0, 0, 0, 0)
 
         # 设置按钮
         settings_btn = QPushButton("设置")
@@ -501,11 +509,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 9px 10px;
                 font-weight: bold;
                 font-size: 13px;
-                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
@@ -524,11 +531,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AEEA00, stop:1 #4CAF50);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 9px 10px;
                 font-weight: bold;
                 font-size: 13px;
-                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9CCC00, stop:1 #388E3C);
@@ -547,11 +553,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #EF5350, stop:1 #C62828);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 9px 10px;
                 font-weight: bold;
                 font-size: 13px;
-                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #E53935, stop:1 #B71C1C);
@@ -570,11 +575,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #AB47BC, stop:1 #7B1FA2);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 9px 10px;
                 font-weight: bold;
                 font-size: 13px;
-                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #9C27B0, stop:1 #6A1B9A);
@@ -595,11 +599,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #B0BEC5, stop:1 #78909C);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 9px 10px;
                 font-weight: bold;
                 font-size: 13px;
-                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #90A4AE, stop:1 #546E7A);
@@ -621,11 +624,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #F06292, stop:1 #C2185B);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 9px 10px;
                 font-weight: bold;
                 font-size: 13px;
-                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #E91E63, stop:1 #AD1457);
@@ -644,11 +646,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #42A5F5, stop:1 #1565C0);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 9px 10px;
                 font-weight: bold;
                 font-size: 13px;
-                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #1E88E5, stop:1 #0D47A1);
@@ -669,11 +670,10 @@ class AIAgentApp(QMainWindow):
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #78909C, stop:1 #455A64);
                 color: #FFFFFF;
                 border: none;
-                border-radius: 8px;
-                padding: 7px 10px;
+                border-radius: 6px;
+                padding: 9px 10px;
                 font-weight: bold;
                 font-size: 13px;
-                min-height: 16px;
             }
             QPushButton:hover {
                 background: qlineargradient(x1:0, y1:0, x2:0, y2:1, stop:0 #546E7A, stop:1 #37474F);
@@ -695,9 +695,13 @@ class AIAgentApp(QMainWindow):
         button_layout.addWidget(test_btn,      1, 2)
         button_layout.addWidget(test_event_btn, 1, 3)
 
+        btn_container = QWidget()
+        btn_container.setLayout(button_layout)
+        btn_container.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+
         right_layout.addWidget(status_container)
         right_layout.addWidget(live2d_label)
-        right_layout.addLayout(button_layout)
+        right_layout.addWidget(btn_container)
         right_widget.setLayout(right_layout)
 
         # 精简模式按钮栏（默认隐藏）
@@ -757,9 +761,10 @@ class AIAgentApp(QMainWindow):
         self._right_widget = right_widget
         self._splitter.addWidget(chat_widget)
         self._splitter.addWidget(right_widget)
-        self._splitter.setSizes([1000, 350])
+        self._splitter.setSizes([850, 480])
         self._splitter.setChildrenCollapsible(False)
-        self._splitter.setHandleWidth(0)
+        self._splitter.setHandleWidth(12)
+        self._splitter.setStyleSheet("QSplitter::handle { background: transparent; }")
         self._splitter.setStretchFactor(0, 1)
         self._splitter.setStretchFactor(1, 0)
 
@@ -767,13 +772,19 @@ class AIAgentApp(QMainWindow):
         main_widget.setLayout(main_layout)
         self.setCentralWidget(main_widget)
 
-        # 添加状态栏
-        self.statusBar().showMessage("就绪")
+        # 隐藏 QMainWindow 内置状态栏（占用底部空间），改用 chat 区的 status_label
+        self.statusBar().hide()
         
         # 显示启动欢迎信息
-        # location = getattr(self.agent, 'location', '未知')
-        app_count = getattr(self.agent, 'app_count', 0)
-        self.add_message("系统", f"预载应用：{app_count}个")
+        try:
+            history = self.agent.memory.get_session_conversations(
+                self.agent.current_session_id, limit=5)
+        except Exception:
+            history = []
+        if history:
+            self.add_message("系统", "欢迎回来，历史对话加载成功")
+        else:
+            self.add_message("系统", "输入消息创建新的会话")
 
     def add_message(self, sender, message):
         """添加消息到聊天历史"""
@@ -900,7 +911,7 @@ class AIAgentApp(QMainWindow):
 
     def send_message(self):
         """发送消息"""
-        user_input = self.input_edit.text().strip()
+        user_input = self.input_edit.toPlainText().strip()
         print(f"📝 send_message被调用，用户输入: {user_input}")
         if not user_input:
             print("⚠️ 用户输入为空，不发送消息")
@@ -1260,7 +1271,7 @@ class AIAgentApp(QMainWindow):
         print(f"🧪 测试添加消息: {test_message}")
 
         # 将测试消息设置到输入框
-        self.input_edit.setText(test_message)
+        self.input_edit.setPlainText(test_message)
         # 调用send_message方法，触发AI的回复
         self.send_message()
 
@@ -1332,7 +1343,7 @@ class AIAgentApp(QMainWindow):
 
         # 更新状态栏
         time_str = self.ai_time.text()
-        self.statusBar().showMessage(
+        self.status_label.setText(
             f"就绪 | 模型: {self.config.get('selected_model', 'deepseek-reasoner')} | 记忆系统: {mem_status} | {time_str}")
 
     def closeEvent(self, event):
@@ -1342,7 +1353,7 @@ class AIAgentApp(QMainWindow):
             self.save_unsaved_conversations()
             
             # 显示退出消息
-            self.statusBar().showMessage("正在保存会话记录...")
+            self.status_label.setText("正在保存会话记录...")
             
             # 接受关闭事件
             event.accept()
@@ -1491,6 +1502,8 @@ class AIAgentApp(QMainWindow):
             # 刚切换到关闭 → 停止监控
             self.agent.multimodal_processor.stop_game_monitoring()
             self.game_mode_btn.setText("游戏模式")
+            self._compact_game_btn.setChecked(False)
+            self._compact_game_btn.setText("游戏模式")
             self.add_message("系统", "🎮 游戏模式已关闭")
             return
 
@@ -1505,11 +1518,10 @@ class AIAgentApp(QMainWindow):
         menu = QMenu(self)
         for label, key in games.items():
             menu.addAction(label, lambda k=key, l=label: self._start_game_monitoring(k, l))
-        menu.aboutToHide.connect(
-            lambda: self.game_mode_btn.setChecked(
-                self.game_mode_btn.text() != "游戏模式"
-            )
-        )
+        menu.aboutToHide.connect(lambda: (
+            self.game_mode_btn.setChecked(self.game_mode_btn.text() != "游戏模式"),
+            self._compact_game_btn.setChecked(self.game_mode_btn.text() != "游戏模式"),
+        ))
         menu.exec_(anchor.mapToGlobal(anchor.rect().bottomLeft()))
 
     def _start_game_monitoring(self, game_key: str, game_label: str):
@@ -1517,10 +1529,14 @@ class AIAgentApp(QMainWindow):
             self.agent.multimodal_processor.start_game_monitoring_from_config(game_key)
             self.game_mode_btn.setChecked(True)
             self.game_mode_btn.setText(f"游戏: {game_label}")
+            self._compact_game_btn.setChecked(True)
+            self._compact_game_btn.setText(f"游戏: {game_label}")
             self.add_message("系统", f"🎮 游戏模式已启动：{game_label}")
         except Exception as e:
             self.game_mode_btn.setChecked(False)
             self.game_mode_btn.setText("游戏模式")
+            self._compact_game_btn.setChecked(False)
+            self._compact_game_btn.setText("游戏模式")
             self.add_message("系统", f"❌ 启动游戏模式失败：{e}")
 
     def toggle_multimodal(self):

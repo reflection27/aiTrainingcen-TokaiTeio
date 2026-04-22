@@ -21,3 +21,4 @@ langchain-core>=0.3.72,<1.0.0
 langchain-text-splitters>=0.3.9,<1.0.0
 faiss-cpu>=1.7.4
 sentence-transformers>=2.2.0
+RealtimeSTT>=0.3.0
