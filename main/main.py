@@ -97,10 +97,10 @@ class TextInputRequestHandler(BaseHTTPRequestHandler):
                         # 使用QApplication.postEvent将事件发送到主线程
                         from PySide6.QtCore import QEvent
                         class TextEvent(QEvent):
-                            EVENT_TYPE = QEvent.User + 1
-                            
+                            EVENT_TYPE = QEvent.registerEventType()
+
                             def __init__(self, text):
-                                super().__init__(TextEvent.EVENT_TYPE)
+                                super().__init__(QEvent.Type(TextEvent.EVENT_TYPE))
                                 self.text = text
                         
                         # 将事件发送到主窗口
@@ -245,12 +245,10 @@ def main():
                 # 将文本设置到输入框
                 window.input_edit.setText(event.text)
                 print(f"✅ 文本已设置到输入框: {event.text}")
-                print(f"📄 输入框当前文本: {window.input_edit.text()}")
 
                 # 使用QTimer.singleShot确保send_message在主线程中调用
                 from PySide6.QtCore import QTimer
                 QTimer.singleShot(100, window.send_message)
-                print(f"📤 已安排延迟调用send_message方法")
                 return True
             # 其他事件交给原始event方法处理
             return original_event(event)
@@ -267,12 +265,10 @@ def main():
                     # 将文本设置到输入框
                     window.input_edit.setText(event.text)
                     print(f"✅ 文本已设置到输入框: {event.text}")
-                    print(f"📄 输入框当前文本: {window.input_edit.text()}")
 
                     # 使用QTimer.singleShot确保send_message在主线程中调用
                     from PySide6.QtCore import QTimer
                     QTimer.singleShot(100, window.send_message)
-                    print(f"📤 已安排延迟调用send_message方法")
                     return True
                 # 其他事件交给原始事件过滤器处理
                 return False

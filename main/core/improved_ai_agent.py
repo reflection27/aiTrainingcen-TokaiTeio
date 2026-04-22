@@ -92,10 +92,10 @@ class ImprovedAIAgent:
             if tts_engine == "gpt_sovits":
                 # 使用GPT-SoVITS TTS
                 gpt_sovits_api_url = config.get("gpt_sovits_api_url", "http://127.0.0.1:9880")
-                ref_audio_path = config.get("gpt_sovits_ref_audio", "")
+                ref_audio_path = os.path.abspath(config.get("gpt_sovits_ref_audio", ""))
                 gpt_sovits_api_type = config.get("gpt_sovits_api_type", "gradio")  # 默认使用gradio
-                t2s_weights_path = config.get("gpt_sovits_t2s_weights", "")
-                vits_weights_path = config.get("gpt_sovits_vits_weights", "")
+                t2s_weights_path = os.path.abspath(config.get("gpt_sovits_t2s_weights", ""))
+                vits_weights_path = os.path.abspath(config.get("gpt_sovits_vits_weights", ""))
 
                 print(f"🔍 初始化GPT-SoVITS TTS管理器，API地址: {gpt_sovits_api_url}, API类型: {gpt_sovits_api_type}, 参考音频: {ref_audio_path}")
                 from core.gpt_sovits_unified import UnifiedGPTSoVITS
