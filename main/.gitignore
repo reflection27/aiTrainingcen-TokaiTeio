@@ -49,6 +49,10 @@ __pycache__/
 *.swo
 *~
 
+# 压缩包
+*.zip
+*.tar.gz
+
 # 系统文件
 .DS_Store
 Thumbs.db
