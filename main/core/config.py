@@ -26,11 +26,7 @@ def load_config():
         "note_filename_format": "timestamp",  # 笔记文件名格式：timestamp(时间戳格式) 或 simple(简单格式)
         # TTS设置
         "tts_enabled": False,  # 是否启用TTS
-        "tts_engine": "azure",  # TTS引擎：azure或gpt_sovits
-        "azure_tts_key": "",  # Azure TTS API密钥
-        "azure_region": "eastasia",  # Azure区域
-        "tts_voice": "zh-CN-XiaoxiaoNeural",  # TTS语音
-        "tts_speaking_rate": 1.0,  # TTS语速
+        "tts_engine": "gpt_sovits",  # TTS引擎
         "gpt_sovits_api_url": "http://127.0.0.1:9880",  # GPT-SoVITS API地址 (已迁移到main/plugins/GPT-SoVITS)
         "gpt_sovits_ref_audio": "",  # GPT-SoVITS参考音频路径
         "skip_streaming_duplicate_play": True,  # 是否跳过流式播放的重复播放（当使用api_v2时）

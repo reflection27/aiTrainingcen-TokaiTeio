@@ -23,7 +23,7 @@ echo       TTS ready
 
 echo.
 echo [2/3] Starting main program...
-start "MainApp" cmd /k "%ROOT%\venv\Scripts\activate.bat && cd /d %ROOT% && python main.py"
+start "" cmd /k "%ROOT%\venv\Scripts\activate.bat && cd /d %ROOT% && python main.py"
 
 echo       Waiting for main program (port 5000)...
 :wait_main

@@ -653,10 +653,10 @@ class ImprovedMemorySystem:
     def get_all_knowledge(self, limit: int = 200) -> List[str]:
         """获取所有知识条目（用于 UI 浏览）"""
         try:
-            all_docs = self.vectorstore.similarity_search("知识", k=limit)
+            docs = list(self.vectorstore.docstore._dict.values())
             return [
                 doc.page_content
-                for doc in all_docs
+                for doc in docs[:limit]
                 if not doc.metadata.get("__placeholder__") and doc.page_content.strip()
             ]
         except Exception:

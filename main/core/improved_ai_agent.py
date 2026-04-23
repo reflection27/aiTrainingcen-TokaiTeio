@@ -87,43 +87,19 @@ class ImprovedAIAgent:
         """初始化TTS管理器"""
         print(f"🔍 开始初始化TTS管理器")
         try:
-            tts_engine = config.get("tts_engine", "azure")  # 默认使用Azure TTS
-            print(f"🔍 TTS引擎类型: {tts_engine}")
-            if tts_engine == "gpt_sovits":
-                # 使用GPT-SoVITS TTS
-                gpt_sovits_api_url = config.get("gpt_sovits_api_url", "http://127.0.0.1:9880")
-                ref_audio_path = os.path.abspath(config.get("gpt_sovits_ref_audio", ""))
-                gpt_sovits_api_type = config.get("gpt_sovits_api_type", "gradio")  # 默认使用gradio
-                t2s_weights_path = os.path.abspath(config.get("gpt_sovits_t2s_weights", ""))
-                vits_weights_path = os.path.abspath(config.get("gpt_sovits_vits_weights", ""))
+            gpt_sovits_api_url = config.get("gpt_sovits_api_url", "http://127.0.0.1:9880")
+            ref_audio_path = os.path.abspath(config.get("gpt_sovits_ref_audio", ""))
+            gpt_sovits_api_type = config.get("gpt_sovits_api_type", "api_v2")
+            t2s_weights_path = os.path.abspath(config.get("gpt_sovits_t2s_weights", ""))
+            vits_weights_path = os.path.abspath(config.get("gpt_sovits_vits_weights", ""))
 
-                print(f"🔍 初始化GPT-SoVITS TTS管理器，API地址: {gpt_sovits_api_url}, API类型: {gpt_sovits_api_type}, 参考音频: {ref_audio_path}")
-                from core.gpt_sovits_unified import UnifiedGPTSoVITS
-                self.tts_manager = UnifiedGPTSoVITS(gpt_sovits_api_url, ref_audio_path, gpt_sovits_api_type)
-                self.tts_engine = "gpt_sovits"
-                print(f"✅ GPT-SoVITS TTS管理器初始化成功，可用性: {self.tts_manager.is_available()}")
-
-                # 保存模型权重路径，但不立即应用
-                self.t2s_weights_path = t2s_weights_path
-                self.vits_weights_path = vits_weights_path
-
-                # 如果使用api_v2类型且用户设置了模型权重，提示用户需要重启服务
-                if gpt_sovits_api_type == "api_v2" and (t2s_weights_path or vits_weights_path):
-                    print(f"ℹ️ 检测到模型权重设置，T2S: {t2s_weights_path}, VITS: {vits_weights_path}")
-                    print("ℹ️ 请确保api_v2服务已启动，并在需要时手动设置模型权重")
-            else:
-                # 使用Azure TTS
-                azure_key = config.get("azure_tts_key", "")
-                azure_region = config.get("azure_region", "eastasia")
-                if azure_key:
-                    from core.tts_manager import TTSManager
-                    self.tts_manager = TTSManager(azure_key, azure_region)
-                    self.tts_engine = "azure"
-                    print("✅ Azure TTS管理器初始化成功")
-                else:
-                    self.tts_manager = None
-                    self.tts_engine = None
-                    print("ℹ️ 未配置TTS密钥，TTS功能已禁用")
+            print(f"🔍 初始化GPT-SoVITS TTS管理器，API地址: {gpt_sovits_api_url}, 参考音频: {ref_audio_path}")
+            from core.gpt_sovits_unified import UnifiedGPTSoVITS
+            self.tts_manager = UnifiedGPTSoVITS(gpt_sovits_api_url, ref_audio_path, gpt_sovits_api_type)
+            self.tts_engine = "gpt_sovits"
+            self.t2s_weights_path = t2s_weights_path
+            self.vits_weights_path = vits_weights_path
+            print(f"✅ GPT-SoVITS TTS管理器初始化成功，可用性: {self.tts_manager.is_available()}")
         except Exception as e:
             print(f"⚠️ TTS管理器初始化失败: {str(e)}")
             self.tts_manager = None

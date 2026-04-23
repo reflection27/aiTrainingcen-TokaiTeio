@@ -41,6 +41,7 @@ from ui.main_window import AIAgentApp
 
 # 全局变量，用于存储主窗口实例
 main_window_instance = None
+stt_connected = False  # STT 首次成功发送文本后置 True
 
 class TextInputRequestHandler(BaseHTTPRequestHandler):
     """文本输入请求处理器，用于接收STT程序发送的文本"""
@@ -69,14 +70,15 @@ class TextInputRequestHandler(BaseHTTPRequestHandler):
         parsed_path = urlparse(self.path)
         
         if parsed_path.path == '/api/status':
-            # 状态API
+            global stt_connected
+            stt_connected = True
             self._send_json_response(200, {"status": "ready"})
         else:
             self._send_json_response(404, {"error": "Not found"})
     
     def do_POST(self):
         """处理POST请求"""
-        global main_window_instance
+        global main_window_instance, stt_connected
         parsed_path = urlparse(self.path)
         
         if parsed_path.path == '/api/text_input':
@@ -91,6 +93,7 @@ class TextInputRequestHandler(BaseHTTPRequestHandler):
                 text = data.get("text", "")
                 
                 if text and text.strip():
+                    stt_connected = True
                     print(f"📥 接收到文本: {text.strip()}")
                     # 将文本发送到主窗口
                     if main_window_instance:

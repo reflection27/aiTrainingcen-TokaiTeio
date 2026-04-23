@@ -301,91 +301,6 @@ class SettingsDialog(QDialog):
         self.tts_enabled_checkbox.setChecked(tts_enabled)
         tts_layout.addRow("TTS功能:", self.tts_enabled_checkbox)
 
-        # TTS引擎选择
-        self.tts_engine_combo = QComboBox()
-        self.tts_engine_combo.addItems(["Azure TTS", "GPT-SoVITS"])
-        current_engine = self.config.get("tts_engine", "azure")
-        if current_engine == "gpt_sovits":
-            self.tts_engine_combo.setCurrentIndex(1)
-        else:
-            self.tts_engine_combo.setCurrentIndex(0)
-        self.tts_engine_combo.currentTextChanged.connect(self.on_tts_engine_changed)
-        tts_layout.addRow("TTS引擎:", self.tts_engine_combo)
-
-        # Azure TTS设置组
-        self.azure_group = QGroupBox("Azure TTS 设置")
-        azure_layout = QFormLayout()
-
-        # Azure TTS API密钥
-        self.azure_tts_key_edit = QLineEdit()
-        self.azure_tts_key_edit.setText(self.config.get("azure_tts_key", ""))
-        self.azure_tts_key_edit.setPlaceholderText("输入Azure Speech Service API密钥")
-        self.azure_tts_key_edit.setEchoMode(QLineEdit.Password)
-        azure_layout.addRow("Azure TTS API密钥:", self.azure_tts_key_edit)
-
-        # Azure区域
-        self.azure_region_combo = QComboBox()
-        self.azure_region_combo.addItems([
-            "eastasia (东亚)",
-            "southeastasia (东南亚)", 
-            "eastus (美国东部)",
-            "westus (美国西部)",
-            "northeurope (北欧)",
-            "westeurope (西欧)"
-        ])
-        current_region = self.config.get("azure_region", "eastasia")
-        region_text = f"{current_region} ({self._get_region_name(current_region)})"
-        index = self.azure_region_combo.findText(region_text)
-        if index >= 0:
-            self.azure_region_combo.setCurrentIndex(index)
-        azure_layout.addRow("Azure区域:", self.azure_region_combo)
-
-        # TTS语音选择
-        self.tts_voice_combo = QComboBox()
-        voices = [
-            ("zh-CN-XiaoxiaoNeural", "晓晓 (推荐)"),
-            ("zh-CN-XiaoyiNeural", "晓伊"),
-            ("zh-CN-YunxiNeural", "云希"),
-            ("zh-CN-YunyangNeural", "云扬"),
-            ("zh-CN-XiaochenNeural", "晓辰"),
-            ("zh-CN-XiaohanNeural", "晓涵"),
-            ("zh-CN-XiaomoNeural", "晓墨"),
-            ("zh-CN-XiaoxuanNeural", "晓萱"),
-            ("zh-CN-XiaoyanNeural", "晓颜"),
-            ("zh-CN-XiaoyouNeural", "晓悠"),
-        ]
-        for voice_id, voice_name in voices:
-            self.tts_voice_combo.addItem(f"{voice_name} ({voice_id})", voice_id)
-        
-        current_voice = self.config.get("tts_voice", "zh-CN-XiaoxiaoNeural")
-        for i in range(self.tts_voice_combo.count()):
-            if self.tts_voice_combo.itemData(i) == current_voice:
-                self.tts_voice_combo.setCurrentIndex(i)
-                break
-        azure_layout.addRow("语音选择:", self.tts_voice_combo)
-
-        # TTS语速设置
-        self.tts_speed_slider = QSlider(Qt.Horizontal)
-        self.tts_speed_slider.setMinimum(50)  # 0.5倍速
-        self.tts_speed_slider.setMaximum(200)  # 2.0倍速
-        speed_value = int(self.config.get("tts_speaking_rate", 1.0) * 100)
-        self.tts_speed_slider.setValue(speed_value)
-        self.tts_speed_slider.setTickPosition(QSlider.TicksBelow)
-        self.tts_speed_slider.setTickInterval(25)
-        
-        self.tts_speed_label = QLabel(f"{speed_value/100:.1f}x")
-        self.tts_speed_slider.valueChanged.connect(
-            lambda value: self.tts_speed_label.setText(f"{value/100:.1f}x")
-        )
-        
-        speed_layout = QHBoxLayout()
-        speed_layout.addWidget(self.tts_speed_slider)
-        speed_layout.addWidget(self.tts_speed_label)
-        azure_layout.addRow("语速设置:", speed_layout)
-
-        # 设置Azure组布局并添加到TTS布局
-        self.azure_group.setLayout(azure_layout)
-        tts_layout.addRow(self.azure_group)
 
         # GPT-SoVITS设置组
         self.gpt_sovits_group = QGroupBox("GPT-SoVITS 设置")
@@ -623,28 +538,8 @@ class SettingsDialog(QDialog):
 
         # 保存TTS设置
         self.config["tts_enabled"] = self.tts_enabled_checkbox.isChecked()
-        self.config["azure_tts_key"] = self.azure_tts_key_edit.text()
-        
-        # 保存Azure区域
-        region_text = self.azure_region_combo.currentText()
-        self.config["azure_region"] = self._get_region_code(region_text)
-        
-        # 保存TTS语音
-        voice_index = self.tts_voice_combo.currentIndex()
-        if voice_index >= 0:
-            self.config["tts_voice"] = self.tts_voice_combo.itemData(voice_index)
-        
-        # 保存TTS语速
-        speed_value = self.tts_speed_slider.value() / 100.0
-        self.config["tts_speaking_rate"] = speed_value
-        
-        # 保存TTS引擎选择
-        engine_text = self.tts_engine_combo.currentText()
-        if engine_text == "GPT-SoVITS":
-            self.config["tts_engine"] = "gpt_sovits"
-        else:
-            self.config["tts_engine"] = "azure"
-            
+        self.config["tts_engine"] = "gpt_sovits"
+
         # 保存GPT-SoVITS设置
         self.config["gpt_sovits_api_url"] = self.gpt_sovits_api_url_edit.text()
         self.config["gpt_sovits_ref_audio"] = self.gpt_sovits_ref_audio_edit.text()
@@ -671,31 +566,6 @@ class SettingsDialog(QDialog):
         save_config(self.config)
         self.accept()
     
-    def _get_region_name(self, region_code: str) -> str:
-        """获取区域名称"""
-        region_names = {
-            "eastasia": "东亚",
-            "southeastasia": "东南亚",
-            "eastus": "美国东部",
-            "westus": "美国西部",
-            "northeurope": "北欧",
-            "westeurope": "西欧"
-        }
-        return region_names.get(region_code, region_code)
-    
-    def _get_region_code(self, region_text: str) -> str:
-        """从区域文本中提取区域代码"""
-        return region_text.split(" ")[0]
-
-    def on_tts_engine_changed(self, engine_name):
-        """处理TTS引擎切换"""
-        if engine_name == "GPT-SoVITS":
-            self.azure_group.hide()
-            self.gpt_sovits_group.show()
-        else:
-            self.azure_group.show()
-            self.gpt_sovits_group.hide()
-
     def browse_ref_audio(self):
         """浏览参考音频文件"""
         file_path, _ = QFileDialog.getOpenFileName(

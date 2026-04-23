@@ -1362,13 +1362,14 @@ class AIAgentApp(QMainWindow):
             self._tts_checked.emit("连接失败", "#e53935")
 
     def _check_asr_status(self):
-        import socket
         try:
-            s = socket.create_connection(("localhost", 8765), timeout=0.5)
-            s.close()
-            self._asr_checked.emit("就绪", "#4a90e2")
+            import main as _main
+            if _main.stt_connected:
+                self._asr_checked.emit("就绪", "#4a90e2")
+            else:
+                self._asr_checked.emit("等待连接", "#f5a623")
         except Exception:
-            self._asr_checked.emit("连接失败", "#e53935")
+            self._asr_checked.emit("等待连接", "#f5a623")
 
     def _apply_tts_status(self, text: str, color: str):
         self.tts_status.setText(text)
