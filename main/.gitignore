@@ -64,6 +64,10 @@ Thumbs.db
 main/plugins/x/
 plugins/RealtimeSTT-master/
 
+# 角色模型权重（通过 setup.bat 下载）
+character/*/weights/*
+!character/*/weights/.gitkeep
+
 # Godot 可执行文件（体积过大，超过 GitHub 100MB 限制）
 plugins/godot/Godot_v4.6.2-stable_win64.exe/
 

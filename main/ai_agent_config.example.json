@@ -29,7 +29,6 @@
   "tts_enabled": true,
   "ai_fallback_enabled": false,
   "ai_summary_enabled": false,
-  "default_save_path": "D:/东海帝王文件/",
   "memory_summary_model": "deepseek-chat",
   "tts_engine": "gpt_sovits",
   "gpt_sovits_api_url": "http://127.0.0.1:9880",
