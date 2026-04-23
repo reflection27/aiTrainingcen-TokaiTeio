@@ -1,0 +1,29 @@
+.claude/
+
+# 模型权重（自动下载或本地训练，不入库）
+*.ckpt
+*.pth
+*.safetensors
+*.bin
+
+# 大型压缩包
+*.zip
+*.tar.gz
+*.tar
+
+# HuggingFace 模型缓存
+main/data/memory/model_cache/
+
+# 数据集文本
+main/plugins/GPT-SoVITS/GPT_SoVITS/BigVGAN/filelists/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+
+# 日志
+*.log
+logs/

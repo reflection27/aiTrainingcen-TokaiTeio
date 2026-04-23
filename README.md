@@ -1,6 +1,6 @@
 # 东海帝王 AI
 
-基于 GPT-SoVITS v2pro 的桌面 AI 语音助手，使用东海帝王（赛马娘）角色音色，支持实时语音输入与语音合成。
+基于 GPT-SoVITS v2pro 的桌面 AI 语音助手，使用东海帝王音色，支持实时语音输入与语音合成。
 
 ## 功能
 
@@ -75,7 +75,7 @@ GLM4V_API_KEY=xxx
     ├── plugins/
     │   ├── GPT-SoVITS/        # TTS 推理引擎
     │   └── godot/             # Godot 角色动画
-    └── mcp/                   # MCP 工具扩展（开发中）
+    └── mcp/                   # MCP 工具扩展（暂未完成）
 ```
 
 ## 训练新角色
