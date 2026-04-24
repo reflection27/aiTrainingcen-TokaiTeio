@@ -1,0 +1,20 @@
+# Windows 批处理文件强制 CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Python / 文本文件使用 LF
+*.py text eol=lf
+*.md text eol=lf
+*.json text eol=lf
+*.txt text eol=lf
+*.env text eol=lf
+
+# 二进制文件不做转换
+*.png binary
+*.jpg binary
+*.wav binary
+*.mp3 binary
+*.pth binary
+*.ckpt binary
+*.exe binary
+*.zip binary

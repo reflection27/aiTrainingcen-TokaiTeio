@@ -32,10 +32,15 @@ where ffmpeg >nul 2>&1
 if errorlevel 1 (
     echo       未找到 ffmpeg，正在通过 winget 安装...
     winget install --id Gyan.FFmpeg -e --silent
+    :: winget 修改了 PATH 但当前会话不自动刷新，从注册表重新加载
+    for /f "tokens=2*" %%a in ('reg query "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Environment" /v PATH 2^>nul') do set "PATH=%%b"
+    for /f "tokens=2*" %%a in ('reg query "HKCU\Environment" /v PATH 2^>nul') do set "PATH=!PATH!;%%b"
     where ffmpeg >nul 2>&1
     if errorlevel 1 (
         echo [警告] ffmpeg 安装失败，请手动安装后重试
-        echo 下载地址：https://www.gyan.dev/ffmpeg/builds/
+        echo        https://www.gyan.dev/ffmpeg/builds/
+    ) else (
+        echo       ffmpeg 安装完成
     )
 ) else (
     echo       ffmpeg 已安装，跳过
@@ -56,10 +61,20 @@ if not exist "venv" (
 :: 4. 安装依赖
 :: ============================================================
 echo [4/6] 安装依赖...
+echo       升级 pip...
+venv\Scripts\python.exe -m pip install --upgrade pip -q
 echo       安装 PyTorch (CUDA 12.1)...
-venv\Scripts\python.exe -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121 -q
+venv\Scripts\python.exe -m pip install torch torchaudio --index-url https://download.pytorch.org/whl/cu121
+if errorlevel 1 (
+    echo [错误] PyTorch 安装失败，请检查网络后重试
+    pause & exit /b 1
+)
 echo       安装项目依赖（时间较长，请耐心等待）...
-venv\Scripts\python.exe -m pip install -r requirements.txt -q
+venv\Scripts\python.exe -m pip install -r requirements.txt
+if errorlevel 1 (
+    echo [错误] 依赖安装失败，请查看上方报错
+    pause & exit /b 1
+)
 echo       依赖安装完成
 
 :: ============================================================
@@ -83,51 +98,7 @@ if not exist "ai_agent_config.json" (
 :: 6. 下载模型
 :: ============================================================
 echo [6/7] 下载模型文件...
-venv\Scripts\python.exe -c "
-import os, sys, urllib.request, zipfile
-
-# HuggingFace 镜像（国内加速）
-os.environ.setdefault('HF_ENDPOINT', 'https://hf-mirror.com')
-from huggingface_hub import snapshot_download
-
-pretrained_dir = 'plugins/GPT-SoVITS/GPT_SoVITS/pretrained_models'
-
-# 下载底模
-def dl_model(repo_id, local_dir, desc):
-    if os.path.exists(local_dir) and os.listdir(local_dir):
-        print(f'  {desc} 已存在，跳过')
-        return
-    print(f'  正在下载 {desc}...')
-    snapshot_download(
-        repo_id=repo_id,
-        local_dir=local_dir,
-        ignore_patterns=['*.h5', 'flax_model*', 'tf_model*', '*.msgpack']
-    )
-    print(f'  {desc} 下载完成')
-
-dl_model('hfl/chinese-roberta-wwm-ext-large',
-         f'{pretrained_dir}/chinese-roberta-wwm-ext-large',
-         'chinese-roberta-wwm-ext-large')
-
-dl_model('TencentGameMate/chinese-hubert-base',
-         f'{pretrained_dir}/chinese-hubert-base',
-         'chinese-hubert-base')
-
-# 下载角色权重
-weights_dir = 'character/TokaiTeio/weights'
-if os.path.exists(f'{weights_dir}/TokaiTeio-e15.ckpt') and os.path.exists(f'{weights_dir}/TokaiTeio_e20_s220.pth'):
-    print('  TokaiTeio 权重已存在，跳过')
-else:
-    print('  正在下载 TokaiTeio 权重...')
-    os.makedirs(weights_dir, exist_ok=True)
-    url = 'https://github.com/reflection27/aiTrainingcen-TokaiTeio/releases/download/weights/TokaiTeio-weights.zip'
-    zip_path = 'TokaiTeio-weights.zip'
-    urllib.request.urlretrieve(url, zip_path)
-    with zipfile.ZipFile(zip_path, 'r') as z:
-        z.extractall(weights_dir)
-    os.remove(zip_path)
-    print('  TokaiTeio 权重下载完成')
-"
+venv\Scripts\python.exe scripts\download_models.py
 
 :: ============================================================
 :: 7. 下载 Godot 可执行文件
@@ -139,19 +110,7 @@ if exist "%GODOT_EXE%" (
     echo       Godot 已存在，跳过
 ) else (
     echo       正在下载 Godot_v4.6.2-stable_win64.exe.zip...
-    venv\Scripts\python.exe -c "
-import urllib.request, zipfile, os
-url = 'https://github.com/godotengine/godot/releases/download/4.6.2-stable/Godot_v4.6.2-stable_win64.exe.zip'
-zip_path = 'godot_tmp.zip'
-dest_dir = 'plugins/godot/Godot_v4.6.2-stable_win64.exe'
-os.makedirs(dest_dir, exist_ok=True)
-print('  下载中（约 100MB）...')
-urllib.request.urlretrieve(url, zip_path)
-with zipfile.ZipFile(zip_path, 'r') as z:
-    z.extractall(dest_dir)
-os.remove(zip_path)
-print('  Godot 下载完成')
-"
+    venv\Scripts\python.exe scripts\download_godot.py
 )
 
 echo.

@@ -5,8 +5,8 @@
 支持通过Gradio客户端和api_v2两种方式调用GPT-SoVITS的TTS功能
 """
 
-import tempfile
 import os
+import uuid
 import pygame
 import threading
 import time
@@ -46,6 +46,13 @@ class UnifiedGPTSoVITS:
         self.enabled = False
         self.client = None
         self.is_playing = False  # 标记是否正在播放
+
+        # 音频临时文件放到项目目录内，避免多实例共用系统 temp 导致序号冲突
+        self._audio_tmp_dir = os.path.join(
+            os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+            'temp', 'audio'
+        )
+        os.makedirs(self._audio_tmp_dir, exist_ok=True)
 
         # 初始化pygame音频（延迟到获取音频参数后）
         self.audio_available = True
@@ -242,13 +249,11 @@ class UnifiedGPTSoVITS:
                     print(f"✅ GPT-SoVITS TTS生成成功，文件路径: {temp_file_path}")
                 else:
                     # 如果是二进制数据，创建临时文件保存
-                    temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
-                    temp_file.close()
+                    temp_file_path = os.path.join(self._audio_tmp_dir, f'{uuid.uuid4().hex}.wav')
 
                     # 保存音频数据
-                    with open(temp_file.name, 'wb') as f:
+                    with open(temp_file_path, 'wb') as f:
                         f.write(result)
-                    temp_file_path = temp_file.name
                     print(f"✅ GPT-SoVITS TTS生成成功，保存到临时文件: {temp_file_path}")
                 return temp_file_path
             else:
@@ -264,9 +269,8 @@ class UnifiedGPTSoVITS:
     def _synthesize_with_api_v2(self, text: str) -> Optional[str]:
         """使用api_v2合成语音"""
         try:
-            # 创建临时音频文件
-            temp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav')
-            temp_file.close()
+            # 创建临时音频文件（放到项目目录内）
+            temp_file_path = os.path.join(self._audio_tmp_dir, f'{uuid.uuid4().hex}.wav')
 
             # 准备请求数据
             data = {
@@ -391,13 +395,13 @@ class UnifiedGPTSoVITS:
                         # 将PCM数据保存到临时文件
                         if len(pcm_data) > 0:
                             # 创建WAV文件
-                            with wave.open(temp_file.name, 'wb') as wav_file:
+                            with wave.open(temp_file_path, 'wb') as wav_file:
                                 wav_file.setnchannels(audio_params['channels'])
                                 wav_file.setsampwidth(audio_params['sample_width'])
                                 wav_file.setframerate(audio_params['sample_rate'])
                                 wav_file.writeframes(pcm_data)
                             
-                            print(f"✅ 音频数据已保存到临时文件: {temp_file.name}")
+                            print(f"✅ 音频数据已保存到临时文件: {temp_file_path}")
                     except Exception as e:
                         print(f"❌ 保存音频数据失败: {e}")
                         import traceback
@@ -423,25 +427,25 @@ class UnifiedGPTSoVITS:
                 if total_bytes < 1000:
                     print(f"⚠️ 音频文件过小: {total_bytes} bytes，可能生成失败")
                     try:
-                        os.unlink(temp_file.name)
+                        os.unlink(temp_file_path)
                     except:
                         pass
                     return None
 
                 # 验证文件大小
-                final_size = os.path.getsize(temp_file.name)
+                final_size = os.path.getsize(temp_file_path)
                 print(f"🔍 最终文件大小: {final_size} bytes")
 
                 if final_size < 1000:
                     print(f"⚠️ 最终文件过小: {final_size} bytes")
                     try:
-                        os.unlink(temp_file.name)
+                        os.unlink(temp_file_path)
                     except:
                         pass
                     return None
 
                 print(f"✅ GPT-SoVITS TTS合成成功: {text[:50]}...")
-                return temp_file.name
+                return temp_file_path
             else:
                 print(f"❌ GPT-SoVITS TTS合成失败: {response.status_code}")
                 try:
@@ -449,7 +453,7 @@ class UnifiedGPTSoVITS:
                     print(f"错误详情: {error_info}")
                 except:
                     pass
-                os.unlink(temp_file.name)
+                os.unlink(temp_file_path)
                 return None
 
         except Exception as e:

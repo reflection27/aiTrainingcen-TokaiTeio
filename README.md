@@ -1,4 +1,4 @@
-# 东海帝王 AI
+# AI 特雷森 - 东海帝王 AI 担当
 
 基于 GPT-SoVITS v2pro 的桌面 AI 语音助手，使用东海帝王音色，支持实时语音输入与语音合成。
 
@@ -81,6 +81,27 @@ GLM4V_API_KEY=xxx
 ## 训练新角色
 
 本项目仅保留推理部分。如需训练新角色音色，请使用完整版 [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) 单独训练，将生成的 `.ckpt` 和 `.pth` 权重文件放入 `character/<角色名>/weights/`，并更新 `ai_agent_config.json` 中的路径即可切换角色。
+
+## 鸣谢
+
+- [GPT-SoVITS](https://github.com/RVC-Boss/GPT-SoVITS) — RVC-Boss，TTS 推理引擎核心
+- [RealtimeSTT](https://github.com/KoljaB/RealtimeSTT) — Kolja Beigel，实时语音识别框架
+- [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — SYSTRAN，Whisper 高效推理实现
+- [Godot Engine](https://godotengine.org) — Godot 社区，角色动画引擎
+- [deepseek-Lunasia-1.0](https://github.com/1112021/deepseek-Lunasia-1.0) — 1112021，早期前端布局参考
+- bopang — 记忆系统设计参考，已获作者授权（项目地址待补充）
+
+## 版权声明
+
+本项目代码以 [MIT 许可证](LICENSE) 开源。
+
+本项目使用了与**赛马娘 Pretty Derby（ウマ娘 プリティーダービー）**相关的角色形象、音色素材及衍生内容。上述素材的版权归 **Cygames, Inc.** 所有，本项目不拥有、不主张也不授权任何第三方对上述素材的使用权利。
+
+- 本项目为**非商业性质的粉丝二次创作**，不以任何形式营利
+- MIT 许可证仅适用于本项目自身编写的代码部分，**不涵盖任何 Cygames 版权素材**
+- 任何基于本项目的衍生使用，**不得将 Cygames 版权素材用于商业目的**
+- 本项目作者对他人违规使用 Cygames 版权素材所引发的法律责任不承担任何连带责任
+
 
 ## 常见问题
 
