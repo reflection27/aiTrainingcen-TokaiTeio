@@ -89,7 +89,7 @@ GLM4V_API_KEY=xxx
 - [faster-whisper](https://github.com/SYSTRAN/faster-whisper) — SYSTRAN，Whisper 高效推理实现
 - [Godot Engine](https://godotengine.org) — Godot 社区，角色动画引擎
 - [deepseek-Lunasia-1.0](https://github.com/1112021/deepseek-Lunasia-1.0) — 1112021，早期前端布局参考
-- bopang — 记忆系统设计参考，已获作者授权（项目地址待补充）
+- bopang — 记忆系统设计参考
 
 ## 版权声明
 
