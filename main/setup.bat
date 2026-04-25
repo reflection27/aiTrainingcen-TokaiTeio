@@ -3,7 +3,7 @@ chcp 65001 >nul
 setlocal enabledelayedexpansion
 
 echo ========================================
-echo   东海帝王AI - 一键安装脚本
+echo   ai特雷森-东海帝王AI - 一键安装脚本
 echo ========================================
 echo.
 
