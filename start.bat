@@ -23,7 +23,7 @@ echo       TTS ready
 
 echo.
 echo [2/3] Starting main program...
-start "" cmd /k "%ROOT%\venv\Scripts\activate.bat && cd /d %ROOT% && python main.py"
+start "" cmd /k "cd /d "%ROOT%" && "%ROOT%\venv\Scripts\python.exe" main.py"
 
 echo       Waiting for main program (port 5000)...
 :wait_main
@@ -40,9 +40,8 @@ echo       Press Ctrl+C to exit
 echo.
 
 cd /d "%ROOT%"
-call venv\Scripts\activate.bat
 set PYTHONIOENCODING=utf-8
-python core\realtimestt_process.py
+"%ROOT%\venv\Scripts\python.exe" core\realtimestt_process.py
 
 echo.
 echo ========================================

@@ -16,7 +16,7 @@ timeout /t 5 /nobreak > nul
 echo.
 echo [2/2] 启动 东海帝王AI 主程序...
 echo.
-start "东海帝王AI" cmd /k "%~dp0..\venv\Scripts\activate.bat && cd /d %~dp0.. && python main.py"
+start "东海帝王AI" cmd /k "cd /d "%~dp0.." && "%~dp0..\venv\Scripts\python.exe" main.py"
 
 echo.
 echo ========================================

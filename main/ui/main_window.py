@@ -155,10 +155,8 @@ class AIAgentApp(QMainWindow):
         self.status_timer = QTimer()
         self.status_timer.timeout.connect(self.update_status)
         self.status_timer.start(1000)  # 每秒更新一次状态
-        
-        # 检查是否是第一次运行，如果是则进行自我介绍
-        self.check_first_run_and_introduce()
-    
+
+
     def _init_asr_integration(self):
         """初始化ASR集成模块"""
         try:
@@ -1435,46 +1433,6 @@ class AIAgentApp(QMainWindow):
         """ImprovedMemorySystem 在每次对话时已自动保存，此方法保留为空"""
         pass
     
-    def check_first_run_and_introduce(self):
-        """检查是否是第一次运行，如果是则进行自我介绍"""
-        try:
-            # 检查记忆系统中的记忆条数
-            memory_stats = self.agent.memory.get_memory_stats()
-            total_conversations = memory_stats.get("total_conversations", 0)
-
-            # 如果对话条数为0，说明是第一次运行
-            if total_conversations == 0:
-                # 生成自我介绍内容
-                introduction = self.generate_introduction()
-                
-                # 将自我介绍添加到聊天历史
-                self.add_message("东海帝王", introduction)
-                
-                # 将自我介绍添加到AI代理的会话记录中，标记为系统消息
-                self.agent._add_session_conversation("系统", introduction)
-                
-        except Exception as e:
-            pass
-    
-    def generate_introduction(self):
-        """生成东海帝王的自我介绍"""
-        current_time = datetime.datetime.now()
-        time_str = current_time.strftime("%H:%M")
-        
-        introduction = f"""（轻轻整理了一下衣服）训练员，您好！我是东海帝王，特雷森学园的赛马娘。
-
-很高兴见到您！作为您的AI担当，我具备以下能力：
-• 智能对话和问题解答
-• 天气查询和实时信息
-• 音乐推荐和文件管理
-• 编程代码生成和帮助
-• 多语言交流和翻译
-• 记忆系统
-
-现在时间是 {time_str}，我已经准备好为您服务了。请告诉我您需要什么帮助吧！
-
-（对了，如果您想了解我的更多功能，可以直接问我"你能做什么"哦~）"""
-
     def _companion_and_compact(self):
         # 1. 先切紧凑布局
         if not self._compact_bar.isVisible():

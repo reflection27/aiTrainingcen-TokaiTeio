@@ -70,7 +70,7 @@ if errorlevel 1 (
     pause & exit /b 1
 )
 echo       安装项目依赖（时间较长，请耐心等待）...
-venv\Scripts\python.exe -m pip install -r requirements.txt
+venv\Scripts\python.exe -m pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/cu121
 if errorlevel 1 (
     echo [错误] 依赖安装失败，请查看上方报错
     pause & exit /b 1
@@ -120,6 +120,6 @@ echo ========================================
 echo.
 echo 下一步：
 echo   1. 编辑 .env 文件，填入 DeepSeek / GLM4V API Key
-echo   2. 运行 scripts\start_all.bat 启动程序
+echo   2. 运行 start.bat 启动程序
 echo.
 pause

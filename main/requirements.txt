@@ -28,8 +28,7 @@ fastapi[standard]>=0.115.2
 pydantic<=2.10.6
 
 # AI 框架
-torch>=2.0.0
-torchaudio>=0.12.0
+# torch / torchaudio 由 setup.bat 单独安装（需指定 CUDA 源）
 transformers>=4.43,<=4.50
 sentence-transformers>=2.2.0
 peft<0.18.0
@@ -51,7 +50,7 @@ ffmpeg-python
 onnxruntime-gpu; platform_machine == "x86_64" or platform_machine == "AMD64"
 onnxruntime; platform_machine == "aarch64" or platform_machine == "arm64"
 tensorboard
-gradio<5
+gradio==4.44.1
 av>=11
 ctranslate2>=4.0,<5
 faster-whisper>=1.1.0
