@@ -76,9 +76,10 @@ class UnifiedGPTSoVITS:
         # 检查API是否可用
         self._check_api_availability()
 
-        # 只在API可用时启动播放工作线程
+        # 只在API可用时启动播放工作线程并预热模型
         if self.enabled:
             self._start_play_worker()
+            self._warmup_async()
 
     def _check_api_availability(self):
         """检查API是否可用"""
@@ -123,6 +124,29 @@ class UnifiedGPTSoVITS:
             self.play_worker_thread = threading.Thread(target=self._play_worker, daemon=True)
             self.play_worker_thread.start()
             print("✅ 播放工作线程已启动")
+
+    def _warmup_async(self):
+        """后台静默预热：发送一次极短的合成请求让服务端提前加载模型"""
+        def _do_warmup():
+            try:
+                print("🔥 TTS预热开始（后台静默）...")
+                if self.api_type == "api_v2":
+                    path = self._synthesize_with_api_v2("你好")
+                elif self.api_type == "gradio":
+                    path = self._synthesize_with_gradio("你好")
+                else:
+                    return
+                if path and os.path.exists(path):
+                    try:
+                        os.unlink(path)
+                    except Exception:
+                        pass
+                print("🔥 TTS预热完成")
+            except Exception as e:
+                print(f"⚠️ TTS预热失败（不影响正常使用）: {e}")
+
+        t = threading.Thread(target=_do_warmup, daemon=True)
+        t.start()
 
     def _play_worker(self):
         """播放工作线程，从全局队列中获取音频并按顺序播放"""
@@ -361,8 +385,13 @@ class UnifiedGPTSoVITS:
                 receive_thread = threading.Thread(target=receive_audio)
                 receive_thread.start()
 
-                # 等待音频参数
+                # 等待音频参数（最多等15秒，超时视为合成失败）
+                wait_start = time.time()
                 while audio_params is None:
+                    if time.time() - wait_start > 15:
+                        print("❌ 等待音频参数超时（15s），视为合成失败")
+                        receive_thread.join(timeout=1)
+                        return None
                     time.sleep(0.1)
 
                 # 播放音频的线程（修改为保存音频数据到临时文件）
@@ -419,9 +448,12 @@ class UnifiedGPTSoVITS:
                         break
                     audio_chunks.append(chunk)
 
-                # 等待接收线程和播放线程结束
-                receive_thread.join()
-                play_thread.join()
+                # 等待接收线程和播放线程结束（各限35秒/10秒，超时视为失败）
+                receive_thread.join(timeout=35)
+                play_thread.join(timeout=10)
+                if receive_thread.is_alive() or play_thread.is_alive():
+                    print("❌ 音频接收/保存线程超时，视为合成失败")
+                    return None
 
                 # 验证文件大小
                 if total_bytes < 1000:

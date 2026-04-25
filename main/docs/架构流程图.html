@@ -43,8 +43,8 @@ flowchart TD
     F --> G[ImprovedAIAgent 初始化]
 
     G --> G1[ImprovedMemorySystem\nFAISS + SQLite]
-    G --> G2[ToolManager\n天气 / 搜索 / 音乐]
-    G --> G3[TTS 初始化\nGPT-SoVITS 或 Azure]
+    G --> G2[ToolManager\n搜索 / 音乐]
+    G --> G3[TTS 初始化\nGPT-SoVITS]
     G --> G4[TextQueueManager 启动]
     G --> G5[MultimodalProcessor 初始化\nGLM-4V-Flash]
 
@@ -234,11 +234,8 @@ flowchart LR
     E -->|否| F[写入 buffer 等待]
     F --> B
     E -->|是| G[完整句子入队\ntext_queue]
-    G --> H{TTS 引擎?}
-    H -->|GPT-SoVITS| I[gpt_sovits_unified.py\nGradio 或 api_v2\nlocalhost:9880]
-    H -->|Azure| J[TTSManager\nazure.cognitiveservices\n+ pygame 播放]
+    G --> I[gpt_sovits_unified.py\nGradio 或 api_v2\nlocalhost:9880]
     I --> K([语音输出])
-    J --> K
 
     style A fill:#e67e22,color:#fff
     style K fill:#27ae60,color:#fff

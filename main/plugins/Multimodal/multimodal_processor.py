@@ -53,7 +53,7 @@ class MultimodalProcessor:
         default_model = default_model or self.config.get("default_model", "glm-4v-flash")
         default_temperature = default_temperature if default_temperature is not None else self.config.get("default_temperature", 0.7)
         default_max_tokens = default_max_tokens if default_max_tokens is not None else self.config.get("default_max_tokens")
-        text_model = text_model or self.config.get("text_model", "deepseek-chat")
+        text_model = text_model or self.config.get("text_model", "deepseek-v4-flash")
 
         # 初始化客户端和屏幕捕获
         self.client = GLM4VFlashClient(api_key=api_key, base_url=base_url, model=default_model)

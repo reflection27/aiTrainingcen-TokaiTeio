@@ -133,6 +133,7 @@ class AIAgentApp(QMainWindow):
         self.asr_enabled = config.get("asr_enabled", False)
         self.asr_recording = False  # 是否正在录音
         self.asr_thread = None  # ASR线程
+        self.stt_enabled = True  # 是否接收STT信号（麦克风按钮控制）
 
         # 初始化ASR集成模块
         self.asr_integration = None
@@ -352,9 +353,34 @@ class AIAgentApp(QMainWindow):
             }
         """)
         self.clock_widget = ClockLoadingWidget()
+
+        # 麦克风开关按钮
+        self.mic_btn = QPushButton("🎙")
+        self.mic_btn.setCheckable(True)
+        self.mic_btn.setChecked(True)
+        self.mic_btn.setFixedSize(36, 36)
+        self.mic_btn.setToolTip("点击关闭/开启语音输入")
+        self.mic_btn.setStyleSheet("""
+            QPushButton {
+                background-color: #4a90e2;
+                color: white;
+                border: none;
+                border-radius: 6px;
+                font-size: 16px;
+            }
+            QPushButton:checked {
+                background-color: #4a90e2;
+            }
+            QPushButton:!checked {
+                background-color: #bdbdbd;
+            }
+        """)
+        self.mic_btn.toggled.connect(self._on_mic_toggled)
+
         input_container = QHBoxLayout()
         input_container.setSpacing(8)
         input_container.setContentsMargins(10, 8, 10, 8)
+        input_container.addWidget(self.mic_btn)
         input_container.addWidget(self.input_edit)
         input_container.addWidget(self.clock_widget)
         input_wrapper.setLayout(input_container)
@@ -436,7 +462,7 @@ class AIAgentApp(QMainWindow):
         value_style = "color: #4a90e2; font-size: 13px; font-weight: bold; font-family: 'Microsoft YaHei', 'SimHei', sans-serif;"
 
         # 值标签
-        self.ai_model   = QLabel(self.config.get("selected_model", "deepseek-reasoner"))
+        self.ai_model   = QLabel(self.config.get("selected_model", "deepseek-v4-flash"))
         self.role_value = QLabel("东海帝王")
         self.ai_memory  = QLabel("记忆系统")   # 保留供状态栏更新使用
         self.ai_apps    = QLabel(f"{getattr(self.agent, 'app_count', 0)}")
@@ -1145,6 +1171,10 @@ class AIAgentApp(QMainWindow):
         """处理超时"""
         print("⏰ 处理超时")
 
+    def _on_mic_toggled(self, checked: bool):
+        """麦克风按钮切换：控制是否接收STT信号"""
+        self.stt_enabled = checked
+
     def toggle_asr(self):
         """切换ASR开关状态"""
         self.asr_enabled = self.record_btn.isChecked()
@@ -1363,8 +1393,9 @@ class AIAgentApp(QMainWindow):
 
     def _check_asr_status(self):
         try:
-            import main as _main
-            if _main.stt_connected:
+            import sys
+            _main = sys.modules.get('__main__')
+            if _main and getattr(_main, 'stt_connected', False):
                 self._asr_checked.emit("就绪", "#4a90e2")
             else:
                 self._asr_checked.emit("等待连接", "#f5a623")

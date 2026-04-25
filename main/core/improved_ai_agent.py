@@ -142,7 +142,7 @@ class ImprovedAIAgent:
                 base_url=config.get("glm4v_base_url", "https://open.bigmodel.cn/api/paas/v4/chat/completions"),
                 save_dir=config.get("screenshot_save_dir", "temp_screenshots"),
                 default_model=config.get("default_model", "glm-4v-flash"),
-                text_model=config.get("text_model", "deepseek-chat"),
+                text_model=config.get("text_model", "deepseek-v4-flash"),
                 system_prompt=self.system_prompt
             )
 
@@ -607,8 +607,10 @@ class ImprovedAIAgent:
         import asyncio
 
         try:
-            model = self.config.get("selected_model", "deepseek-chat")
+            model = self.config.get("selected_model", "deepseek-v4-flash")
             call_start_time = time.time()
+            thinking_mode = self.config.get("thinking_mode", False)
+            thinking_extra = {"thinking": {"type": "enabled", "budget_tokens": 8000}} if thinking_mode else {"thinking": {"type": "disabled"}}
 
             # 添加超时控制
             try:
@@ -627,7 +629,8 @@ class ImprovedAIAgent:
                             ],
                             max_tokens=max_tokens,  # 减少token数量以加快响应
                             temperature=0.7,
-                            stream=True
+                            stream=True,
+                            extra_body=thinking_extra
                         ),
                         timeout=5.0  # 流式模式5秒超时，减少首字延迟
                     )
@@ -702,7 +705,8 @@ class ImprovedAIAgent:
                                 {"role": "user", "content": prompt}
                             ],
                             max_tokens=1024,
-                            temperature=0.7
+                            temperature=0.7,
+                            extra_body=thinking_extra
                         ),
                         timeout=10.0
                     )
@@ -851,7 +855,7 @@ class ImprovedAIAgent:
                 f"用户: {user_input}\nAI: {ai_response}\n\n提取的知识点:"
             )
             resp = await self.client.chat.completions.create(
-                model=self.config.get("selected_model", "deepseek-chat"),
+                model=self.config.get("selected_model", "deepseek-v4-flash"),
                 messages=[{"role": "user", "content": prompt}],
                 max_tokens=200,
                 temperature=0.2

@@ -18,8 +18,9 @@ def load_config():
         "deepseek_key": "",
         "default_browser": "",  # 默认浏览器
         "default_search_engine": "baidu",  # 默认搜索引擎
-        "selected_model": "deepseek-reasoner",
-        "memory_summary_model": "deepseek-reasoner",  # 记忆系统总结使用的模型
+        "selected_model": "deepseek-v4-flash",
+        "thinking_mode": False,  # 是否启用 deepseek-v4-flash 思考模式
+        "memory_summary_model": "deepseek-v4-flash",  # 记忆系统总结使用的模型
         "max_tokens": 1000,  # AI最大token数，0表示无限制
         "window_transparency": 100,  # 窗口透明度，100表示完全不透明
         "show_remember_details": True,  # 是否显示"记住这个时刻"的详细信息

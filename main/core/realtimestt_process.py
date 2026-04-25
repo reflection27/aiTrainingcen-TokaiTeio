@@ -4,10 +4,21 @@ RealtimeSTT 使用示例
 实时语音转文字演示
 """
 
+import os
+import logging
 import requests
 import json
 import time
 from RealtimeSTT import AudioToTextRecorder
+
+# 日志写入 main/logs/realtimestt.log
+_logs_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'logs')
+os.makedirs(_logs_dir, exist_ok=True)
+_stt_logger = logging.getLogger('realtimestt')
+_stt_handler = logging.FileHandler(os.path.join(_logs_dir, 'realtimestt.log'), encoding='utf-8')
+_stt_handler.setLevel(logging.WARNING)
+_stt_handler.setFormatter(logging.Formatter('%(asctime)s [%(levelname)s] %(name)s: %(message)s', datefmt='%Y-%m-%d %H:%M:%S'))
+_stt_logger.addHandler(_stt_handler)
 
 def send_text_to_main(text):
     """
@@ -83,6 +94,7 @@ def main():
         realtime_processing_pause=0.2,  # 实时处理暂停时间
         realtime_batch_size=5,  # 实时处理批次大小
         on_realtime_transcription_stabilized=lambda text: print(f"\n⚡ 实时: {text}"),  # 实时转录回调
+        no_log_file=True,
     )
 
     print("✅ 语音识别器初始化完成！")

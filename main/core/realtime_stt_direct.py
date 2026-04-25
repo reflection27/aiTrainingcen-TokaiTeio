@@ -55,6 +55,7 @@ class RealtimeSTTThread(QThread):
                 realtime_processing_pause=realtime_processing_pause,
                 realtime_batch_size=realtime_batch_size,
                 on_realtime_transcription_stabilized=lambda text: self.text_ready.emit(text),
+                no_log_file=True,
             )
 
             print("✅ 语音识别器初始化完成！")

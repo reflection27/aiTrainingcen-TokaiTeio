@@ -210,15 +210,19 @@ class SettingsDialog(QDialog):
         model_layout = QFormLayout()
 
         self.chat_model_combo = QComboBox()
-        self.chat_model_combo.addItems(["deepseek-chat", "deepseek-coder", "deepseek-reasoner", "gpt-4-turbo", "gpt-3.5-turbo"])
-        self.chat_model_combo.setCurrentText(self.config.get("selected_model", "deepseek-chat"))
+        self.chat_model_combo.addItems(["deepseek-v4-flash", "gpt-4-turbo", "gpt-3.5-turbo"])
+        self.chat_model_combo.setCurrentText(self.config.get("selected_model", "deepseek-v4-flash"))
         model_layout.addRow("AI模型:", self.chat_model_combo)
 
         # 记忆系统模型选择
         self.memory_model_combo = QComboBox()
-        self.memory_model_combo.addItems(["deepseek-chat", "deepseek-coder", "deepseek-reasoner", "gpt-4-turbo", "gpt-3.5-turbo"])
-        self.memory_model_combo.setCurrentText(self.config.get("memory_summary_model", "deepseek-reasoner"))
+        self.memory_model_combo.addItems(["deepseek-v4-flash", "gpt-4-turbo", "gpt-3.5-turbo"])
+        self.memory_model_combo.setCurrentText(self.config.get("memory_summary_model", "deepseek-v4-flash"))
         model_layout.addRow("记忆系统模型:", self.memory_model_combo)
+
+        self.thinking_mode_checkbox = QCheckBox("启用思考模式（deepseek-v4-flash 深度推理，响应较慢）")
+        self.thinking_mode_checkbox.setChecked(self.config.get("thinking_mode", False))
+        model_layout.addRow("", self.thinking_mode_checkbox)
 
         # AI Token数设置
         self.max_tokens_edit = QLineEdit()
@@ -501,7 +505,8 @@ class SettingsDialog(QDialog):
 
         # 保存模型选择
         self.config["selected_model"] = self.chat_model_combo.currentText()
-        
+        self.config["thinking_mode"] = self.thinking_mode_checkbox.isChecked()
+
         # 保存记忆系统模型选择
         self.config["memory_summary_model"] = self.memory_model_combo.currentText()
 

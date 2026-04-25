@@ -27,6 +27,7 @@ data/
 recovered_files/
 
 # 临时文件
+temp/
 temp_*.py
 temp_*.txt
 *.backup
@@ -58,6 +59,7 @@ __pycache__/
 Thumbs.db
 
 # 日志文件
+logs/
 *.log
 
 # 插件和预训练模型

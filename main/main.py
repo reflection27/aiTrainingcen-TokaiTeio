@@ -8,11 +8,52 @@ import sys
 import os
 import threading
 import json
+import logging
+from datetime import datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse
 from PySide6.QtWidgets import QApplication
 from PySide6.QtGui import QFont, QPalette, QColor
 from PySide6.QtCore import Qt, QObject, Signal
+
+def setup_logging():
+    """初始化日志系统，将 WARNING 及以上级别写入 logs/<日期>.log"""
+    logs_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'logs')
+    os.makedirs(logs_dir, exist_ok=True)
+
+    log_file = os.path.join(logs_dir, f"{datetime.now().strftime('%Y-%m-%d')}.log")
+
+    handler = logging.FileHandler(log_file, encoding='utf-8')
+    handler.setLevel(logging.WARNING)
+    handler.setFormatter(logging.Formatter(
+        '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+
+    root = logging.getLogger()
+    root.setLevel(logging.WARNING)
+    root.addHandler(handler)
+
+    # 接管 RealtimeSTT 的日志（它设置了 propagate=False，需单独添加 handler）
+    stt_log_file = os.path.join(logs_dir, 'realtimestt.log')
+    stt_handler = logging.FileHandler(stt_log_file, encoding='utf-8')
+    stt_handler.setLevel(logging.WARNING)
+    stt_handler.setFormatter(logging.Formatter(
+        '%(asctime)s [%(levelname)s] %(name)s: %(message)s',
+        datefmt='%Y-%m-%d %H:%M:%S'
+    ))
+    logging.getLogger('realtimestt').addHandler(stt_handler)
+
+    # 捕获未处理异常并写入日志
+    def _handle_uncaught(exc_type, exc_value, exc_tb):
+        if issubclass(exc_type, KeyboardInterrupt):
+            sys.__excepthook__(exc_type, exc_value, exc_tb)
+            return
+        logging.getLogger('uncaught').error('未捕获的异常', exc_info=(exc_type, exc_value, exc_tb))
+
+    sys.excepthook = _handle_uncaught
+    print(f"✅ 日志系统已初始化: {log_file}")
+
 
 # 加载.env文件
 def load_env():
@@ -164,6 +205,7 @@ async def preload_models():
 
 def main():
     """主程序入口"""
+    setup_logging()
     try:
         print("🚀 程序启动中...")
 
@@ -245,6 +287,9 @@ def main():
                 print(f"🔍 事件有text属性: {event.text}")
             if hasattr(event, 'EVENT_TYPE') and event.type() == event.EVENT_TYPE:
                 print(f"📝 接收到自定义事件，文本: {event.text}")
+                if not getattr(window, 'stt_enabled', True):
+                    print("🔇 STT已关闭，忽略语音输入")
+                    return True
                 # 将文本设置到输入框
                 window.input_edit.setText(event.text)
                 print(f"✅ 文本已设置到输入框: {event.text}")
@@ -265,6 +310,9 @@ def main():
                 # 只处理自定义文本输入事件
                 if hasattr(event, 'EVENT_TYPE') and event.type() == event.EVENT_TYPE:
                     print(f"📝 事件过滤器接收到自定义事件，文本: {event.text}")
+                    if not getattr(window, 'stt_enabled', True):
+                        print("🔇 STT已关闭，忽略语音输入")
+                        return True
                     # 将文本设置到输入框
                     window.input_edit.setText(event.text)
                     print(f"✅ 文本已设置到输入框: {event.text}")

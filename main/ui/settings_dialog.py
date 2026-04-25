@@ -149,18 +149,22 @@ class SettingsDialog(QDialog):
         model_layout = QFormLayout()
 
         self.chat_model_combo = QComboBox()
-        self.chat_model_combo.addItems(["deepseek-chat", "deepseek-reasoner", "deepseek-coder"])
-        current = self.config.get("selected_model", "deepseek-chat")
+        self.chat_model_combo.addItems(["deepseek-v4-flash"])
+        current = self.config.get("selected_model", "deepseek-v4-flash")
         if self.chat_model_combo.findText(current) >= 0:
             self.chat_model_combo.setCurrentText(current)
         model_layout.addRow("AI 模型:", self.chat_model_combo)
 
         self.memory_model_combo = QComboBox()
-        self.memory_model_combo.addItems(["deepseek-chat", "deepseek-reasoner", "deepseek-coder"])
-        mem_model = self.config.get("memory_summary_model", "deepseek-reasoner")
+        self.memory_model_combo.addItems(["deepseek-v4-flash"])
+        mem_model = self.config.get("memory_summary_model", "deepseek-v4-flash")
         if self.memory_model_combo.findText(mem_model) >= 0:
             self.memory_model_combo.setCurrentText(mem_model)
         model_layout.addRow("记忆系统模型:", self.memory_model_combo)
+
+        self.thinking_mode_checkbox = QCheckBox("启用思考模式（deepseek-v4-flash 深度推理，响应较慢）")
+        self.thinking_mode_checkbox.setChecked(self.config.get("thinking_mode", False))
+        model_layout.addRow("", self.thinking_mode_checkbox)
 
         self.lock_model_checkbox = QCheckBox("锁定模型选择（防止误操作）")
         self.lock_model_checkbox.setChecked(self.config.get("lock_model", False))
@@ -328,6 +332,7 @@ class SettingsDialog(QDialog):
         self.config["deepseek_key"]          = deepseek_key
         self.config["glm4v_key"]             = glm_key
         self.config["selected_model"]        = self.chat_model_combo.currentText()
+        self.config["thinking_mode"]         = self.thinking_mode_checkbox.isChecked()
         self.config["memory_summary_model"]  = self.memory_model_combo.currentText()
         self.config["lock_model"]            = self.lock_model_checkbox.isChecked()
         self.config["window_transparency"]   = self.transparency_slider.value()

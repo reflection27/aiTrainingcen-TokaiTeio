@@ -22,7 +22,7 @@ class MultimodalIntegration:
             base_url=config.get("glm4v_base_url", "https://open.bigmodel.cn/api/paas/v4/chat/completions"),
             save_dir=config.get("screenshot_save_dir", "temp_screenshots"),
             default_model=config.get("default_model", "glm-4v-flash"),
-            text_model=config.get("text_model", "deepseek-chat"),
+            text_model=config.get("text_model", "deepseek-v4-flash"),
             auto_capture=config.get("auto_capture", False)
         )
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
         "glm4v_base_url": "https://open.bigmodel.cn/api/paas/v4/chat/completions",
         "screenshot_save_dir": "temp_screenshots",
         "default_model": "glm-4v-flash",
-        "text_model": "deepseek-chat",
+        "text_model": "deepseek-v4-flash",
         "auto_capture": True,
         "multimodal_enabled": True
     }

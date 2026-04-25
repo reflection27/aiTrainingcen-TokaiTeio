@@ -85,7 +85,7 @@ class TextQueueManager(QObject):
             if text and not self.in_brackets:
                 # 检查文本中是否包含标点符号
                 for char in text:
-                    if char in '，。！？、；："''【】,.!?:;"''[]':
+                    if char in '，。！？、；：,.!?:;':
                         # 找到标点符号的位置
                         punct_pos = text.find(char)
                         # 将标点符号及其前面的文本添加到缓冲区
@@ -120,7 +120,7 @@ class TextQueueManager(QObject):
                             if self.buffer.strip():
                                 # 检查缓冲区是否以标点符号结尾，如果是，则包含标点符号一起发送
                                 buffer_to_send = self.buffer
-                                if buffer_to_send and buffer_to_send[-1] in '，。！？、；："''【】,.!?:;"''[]':
+                                if buffer_to_send and buffer_to_send[-1] in '，。！？、；：,.!?:;':
                                     print(f"✅ 检测到正括号，缓冲区以标点符号结尾: {buffer_to_send[-1]}")
                                 else:
                                     print(f"✅ 检测到正括号，发送缓冲区中的文本: {buffer_to_send}")
@@ -152,7 +152,7 @@ class TextQueueManager(QObject):
                 return
             
             # 检查文本是否以标点符号结尾
-            if text and text[-1] in '，。！？、；："''【】,.!?:;"\'\'[]':
+            if text and text[-1] in '，。！？、；：,.!?:;':
                 print(f"✅ 检测到标点符号结尾: {text[-1]}")
                 # 确保标点符号总是与前面的文本一起发送到TTS
                 # 将缓冲区中的文本和新文本组合在一起，确保标点符号包含在内
