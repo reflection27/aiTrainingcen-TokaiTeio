@@ -240,6 +240,14 @@ class SettingsDialog(QDialog):
             self.gpt_sovits_prompt_lang_combo.setCurrentIndex(idx)
         sovits_layout.addRow("参考音频语言:", self.gpt_sovits_prompt_lang_combo)
 
+        self.gpt_sovits_text_lang_combo = QComboBox()
+        self.gpt_sovits_text_lang_combo.addItems(["中文", "英文", "日文", "中英混合", "日英混合", "多语种混合"])
+        saved_text_lang = self.config.get("gpt_sovits_text_lang", "中文")
+        idx = self.gpt_sovits_text_lang_combo.findText(saved_text_lang)
+        if idx >= 0:
+            self.gpt_sovits_text_lang_combo.setCurrentIndex(idx)
+        sovits_layout.addRow("合成文本语言:", self.gpt_sovits_text_lang_combo)
+
         t2s_row = QHBoxLayout()
         self.gpt_sovits_t2s_weights_edit = QLineEdit()
         self.gpt_sovits_t2s_weights_edit.setText(self.config.get("gpt_sovits_t2s_weights", ""))
@@ -359,6 +367,7 @@ class SettingsDialog(QDialog):
         self.config["gpt_sovits_ref_audio"]  = self.gpt_sovits_ref_audio_edit.text()
         self.config["gpt_sovits_prompt_text"] = self.gpt_sovits_prompt_text_edit.text()
         self.config["gpt_sovits_prompt_lang"] = self.gpt_sovits_prompt_lang_combo.currentText()
+        self.config["gpt_sovits_text_lang"]   = self.gpt_sovits_text_lang_combo.currentText()
         self.config["gpt_sovits_t2s_weights"] = self.gpt_sovits_t2s_weights_edit.text()
         self.config["gpt_sovits_vits_weights"] = self.gpt_sovits_vits_weights_edit.text()
 

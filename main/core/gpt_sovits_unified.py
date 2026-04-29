@@ -40,7 +40,7 @@ class UnifiedGPTSoVITS:
         name = os.path.splitext(os.path.basename(ref_audio_path))[0]
         return name.replace("__", " ").strip()
 
-    def __init__(self, api_url="http://127.0.0.1:9880", ref_audio_path="", api_type="api_v2", prompt_text="", prompt_lang="日文"):  # 默认使用api_v2，端口9880
+    def __init__(self, api_url="http://127.0.0.1:9880", ref_audio_path="", api_type="api_v2", prompt_text="", prompt_lang="日文", text_lang="中文"):  # 默认使用api_v2，端口9880
         """
         初始化统一的GPT-SoVITS TTS调用类
 
@@ -49,11 +49,14 @@ class UnifiedGPTSoVITS:
             ref_audio_path: 参考音频路径
             api_type: API类型，可选值为"gradio"或"api_v2"
             prompt_text: 参考音频文本，为空时自动从文件名提取
+            prompt_lang: 参考音频的语言
+            text_lang: 合成文本的语言（与参考音频语言独立）
         """
         self.api_url = api_url
         self.ref_audio_path = ref_audio_path
         self.prompt_text = prompt_text if prompt_text else self._extract_prompt_text(ref_audio_path)
         self.prompt_lang = prompt_lang
+        self.text_lang = text_lang
         self.api_type = api_type
         self.enabled = False
         self.client = None
@@ -263,7 +266,7 @@ class UnifiedGPTSoVITS:
                 prompt_text=self.prompt_text,
                 prompt_language=self.prompt_lang,
                 text=text,
-                text_language=self.prompt_lang,
+                text_language=self.text_lang,
                 how_to_cut="凑四句一切",
                 top_k=15,
                 top_p=1,
@@ -313,13 +316,14 @@ class UnifiedGPTSoVITS:
                 "中文": "zh", "英文": "en", "日文": "ja",
                 "中英混合": "zh_en", "日英混合": "ja_en", "多语种混合": "auto"
             }
-            _lang_code = _lang_map.get(self.prompt_lang, "zh")
+            _prompt_lang_code = _lang_map.get(self.prompt_lang, "zh")
+            _text_lang_code = _lang_map.get(self.text_lang, "zh")
             data = {
                 "text": text,
-                "text_lang": _lang_code,
+                "text_lang": _text_lang_code,
                 "ref_audio_path": self.ref_audio_path,
                 "prompt_text": self.prompt_text,
-                "prompt_lang": _lang_code,
+                "prompt_lang": _prompt_lang_code,
                 "top_k": 12,  # 降低top_k值，使语音更稳定
                 "top_p": 0.85,  # 降低top_p值，减少随机性
                 "temperature": 0.7,  # 降低temperature，使语音更自然

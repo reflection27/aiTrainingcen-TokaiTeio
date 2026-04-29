@@ -30,6 +30,7 @@ def load_config():
         "tts_engine": "gpt_sovits",  # TTS引擎
         "gpt_sovits_api_url": "http://127.0.0.1:9880",  # GPT-SoVITS API地址 (已迁移到main/plugins/GPT-SoVITS)
         "gpt_sovits_ref_audio": "",  # GPT-SoVITS参考音频路径
+        "gpt_sovits_text_lang": "中文",  # 合成文本的语言（与参考音频语言独立）
         "skip_streaming_duplicate_play": True,  # 是否跳过流式播放的重复播放（当使用api_v2时）
         # ASR设置
         "asr_enabled": True,  # 是否启用ASR（默认开启）

@@ -97,7 +97,8 @@ class ImprovedAIAgent:
             from core.gpt_sovits_unified import UnifiedGPTSoVITS
             prompt_text = config.get("gpt_sovits_prompt_text", "")
             prompt_lang = config.get("gpt_sovits_prompt_lang", "日文")
-            self.tts_manager = UnifiedGPTSoVITS(gpt_sovits_api_url, ref_audio_path, gpt_sovits_api_type, prompt_text, prompt_lang)
+            text_lang = config.get("gpt_sovits_text_lang", "中文")
+            self.tts_manager = UnifiedGPTSoVITS(gpt_sovits_api_url, ref_audio_path, gpt_sovits_api_type, prompt_text, prompt_lang, text_lang)
             self.tts_engine = "gpt_sovits"
             self.t2s_weights_path = t2s_weights_path
             self.vits_weights_path = vits_weights_path

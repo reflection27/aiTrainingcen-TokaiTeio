@@ -78,3 +78,6 @@ plugins/godot/Godot_v4.6.2-stable_win64.exe/
 
 # 旧版本代码文件夹及其下的所有内容
 旧版本代码/
+
+# GPT-SoVITS 自动生成的词典校验文件
+plugins/GPT-SoVITS/GPT_SoVITS/text/ja_userdic/userdict.md5
