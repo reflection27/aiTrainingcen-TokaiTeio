@@ -227,6 +227,19 @@ class SettingsDialog(QDialog):
         ref_row.addWidget(ref_btn)
         sovits_layout.addRow("参考音频:", ref_row)
 
+        self.gpt_sovits_prompt_text_edit = QLineEdit()
+        self.gpt_sovits_prompt_text_edit.setText(self.config.get("gpt_sovits_prompt_text", ""))
+        self.gpt_sovits_prompt_text_edit.setPlaceholderText("参考音频文本（自动从文件名提取，可手动修改）")
+        sovits_layout.addRow("参考音频文本:", self.gpt_sovits_prompt_text_edit)
+
+        self.gpt_sovits_prompt_lang_combo = QComboBox()
+        self.gpt_sovits_prompt_lang_combo.addItems(["中文", "英文", "日文", "中英混合", "日英混合", "多语种混合"])
+        saved_lang = self.config.get("gpt_sovits_prompt_lang", "日文")
+        idx = self.gpt_sovits_prompt_lang_combo.findText(saved_lang)
+        if idx >= 0:
+            self.gpt_sovits_prompt_lang_combo.setCurrentIndex(idx)
+        sovits_layout.addRow("参考音频语言:", self.gpt_sovits_prompt_lang_combo)
+
         t2s_row = QHBoxLayout()
         self.gpt_sovits_t2s_weights_edit = QLineEdit()
         self.gpt_sovits_t2s_weights_edit.setText(self.config.get("gpt_sovits_t2s_weights", ""))
@@ -308,6 +321,9 @@ class SettingsDialog(QDialog):
             "音频文件 (*.wav *.mp3 *.flac *.ogg);;All Files (*)")
         if path:
             self.gpt_sovits_ref_audio_edit.setText(path)
+            import os
+            name = os.path.splitext(os.path.basename(path))[0].replace("__", " ").strip()
+            self.gpt_sovits_prompt_text_edit.setText(name)
 
     def _browse_t2s_weights(self):
         path, _ = QFileDialog.getOpenFileName(
@@ -341,6 +357,8 @@ class SettingsDialog(QDialog):
         self.config["gpt_sovits_api_type"]   = self.gpt_sovits_api_type_combo.currentText()
         self.config["gpt_sovits_api_url"]    = self.gpt_sovits_api_url_edit.text()
         self.config["gpt_sovits_ref_audio"]  = self.gpt_sovits_ref_audio_edit.text()
+        self.config["gpt_sovits_prompt_text"] = self.gpt_sovits_prompt_text_edit.text()
+        self.config["gpt_sovits_prompt_lang"] = self.gpt_sovits_prompt_lang_combo.currentText()
         self.config["gpt_sovits_t2s_weights"] = self.gpt_sovits_t2s_weights_edit.text()
         self.config["gpt_sovits_vits_weights"] = self.gpt_sovits_vits_weights_edit.text()
 

@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 改进的AI Agent核心模块
-整合异步处理和模块化架构，借鉴bopang2的快速响应机制
+整合异步处理和模块化架构
 """
 
 import asyncio
@@ -19,7 +19,7 @@ class ImprovedAIAgent:
         self.config = config
         self.name = "东海帝王"
         self.role = "赛马娘世界观特雷森学园的一名学生赛马娘。你活泼开朗、充满活力，热爱奔跑和比赛。"
-        self.system_prompt = f"你是{self.name}，{self.role}。请以东海帝王的思考方式和说话习惯来交流！"
+        self.system_prompt = f"你是{self.name}，{self.role}。与你对话的人是你的训练员，请以东海帝王的思考方式和说话习惯来交流！"
 
         # 初始化异步记忆系统
         self.memory = ImprovedMemorySystem()
@@ -95,7 +95,9 @@ class ImprovedAIAgent:
 
             print(f"🔍 初始化GPT-SoVITS TTS管理器，API地址: {gpt_sovits_api_url}, 参考音频: {ref_audio_path}")
             from core.gpt_sovits_unified import UnifiedGPTSoVITS
-            self.tts_manager = UnifiedGPTSoVITS(gpt_sovits_api_url, ref_audio_path, gpt_sovits_api_type)
+            prompt_text = config.get("gpt_sovits_prompt_text", "")
+            prompt_lang = config.get("gpt_sovits_prompt_lang", "日文")
+            self.tts_manager = UnifiedGPTSoVITS(gpt_sovits_api_url, ref_audio_path, gpt_sovits_api_type, prompt_text, prompt_lang)
             self.tts_engine = "gpt_sovits"
             self.t2s_weights_path = t2s_weights_path
             self.vits_weights_path = vits_weights_path
@@ -193,20 +195,9 @@ class ImprovedAIAgent:
             '知道', '明白', '了解', '清楚'
         ]
 
-        # 检查是否包含简单关键词
+        # 只有纯打招呼类才走快速模式
         if any(keyword in user_input for keyword in simple_keywords):
             return True
-
-        # 检查输入长度
-        if len(user_input) < 50:
-            # 检查是否包含复杂关键词
-            complex_keywords = [
-                '为什么', '怎么', '如何', '解释', '分析', '详细',
-                '搜索', '查找', '打开', '创建', '保存', '天气',
-                '时间', '计算', '翻译', '写', '生成', '代码'
-            ]
-            if not any(keyword in user_input for keyword in complex_keywords):
-                return True
 
         return False
 
@@ -567,10 +558,12 @@ class ImprovedAIAgent:
 
         # 快速模式：简化prompt
         if fast_mode:
-            # 只添加最近1条历史对话
+            # 只添加最近3条历史对话
             if context["history"]:
-                h = context["history"][-1]
-                prompt_parts.append(f"\n最近对话:\n用户: {h['user']}\n助手: {h['assistant']}")
+                prompt_parts.append("\n[历史对话]")
+                for h in reversed(context["history"][-3:]):
+                    prompt_parts.append(f"用户: {h['user']}")
+                    prompt_parts.append(f"助手: {h['assistant']}")
 
             # 添加当前输入
             prompt_parts.append(f"\n当前对话:\n用户: {user_input}\n助手:")
@@ -585,7 +578,7 @@ class ImprovedAIAgent:
         # 添加历史对话
         if context["history"]:
             prompt_parts.append("\n[历史对话]")
-            for h in reversed(context["history"][-3:]):  # 只取最近3条
+            for h in reversed(context["history"][-10:]):  # 只取最近10条
                 prompt_parts.append(f"用户: {h['user']}")
                 prompt_parts.append(f"助手: {h['assistant']}")
 

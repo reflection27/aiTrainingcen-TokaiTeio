@@ -79,6 +79,7 @@ class GodotPetClient:
     def expression(self, preset: str, duration: float = 0.3) -> None:
         """preset: normal/happy/smile/angry/sad/surprised/smug/dere/excited"""
         self.send({"cmd": "expression", "preset": preset, "duration": duration})
+        self.send({"cmd": "play_action", "action": preset})
 
     def move(self, x: int, y: int) -> None:
         self.send({"cmd": "move", "x": x, "y": y})

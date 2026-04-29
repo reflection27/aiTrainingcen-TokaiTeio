@@ -277,13 +277,23 @@ func _stop_lip_sync() -> void:
 
 # ── 公共接口 ───────────────────────────────────────────────────────────────────
 
+func _suppress_expression_mouth(suppress: bool) -> void:
+	for shape in _active_shapes.keys():
+		if shape.begins_with("Mouth_"):
+			var target: float = 0.0 if suppress else _active_shapes[shape]
+			_set_raw_blend_shape(shape, target)
+
+
 func set_state(state_name: String) -> void:
 	match state_name:
 		"idle":
 			if _state == State.TALKING:
 				_stop_lip_sync()
+				_suppress_expression_mouth(false)
 			_state = State.IDLE
 		"talking":
+			if _state != State.TALKING:
+				_suppress_expression_mouth(true)
 			_state = State.TALKING
 		"wave":
 			if not _is_waving:
