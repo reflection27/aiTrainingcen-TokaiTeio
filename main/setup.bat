@@ -14,7 +14,7 @@ cd /d "%ROOT%"
 :: ============================================================
 :: 1. 检查 Python
 :: ============================================================
-echo [1/6] 检查 Python...
+echo [1/8] 检查 Python...
 python --version >nul 2>&1
 if errorlevel 1 (
     echo [错误] 未找到 Python，请先安装 Python 3.11
@@ -27,7 +27,7 @@ echo       Python %PY_VER% 已找到
 :: ============================================================
 :: 2. 检查/安装 ffmpeg
 :: ============================================================
-echo [2/6] 检查 ffmpeg...
+echo [2/8] 检查 ffmpeg...
 where ffmpeg >nul 2>&1
 if errorlevel 1 (
     echo       未找到 ffmpeg，正在通过 winget 安装...
@@ -49,7 +49,7 @@ if errorlevel 1 (
 :: ============================================================
 :: 3. 创建虚拟环境
 :: ============================================================
-echo [3/6] 创建虚拟环境...
+echo [3/8] 创建虚拟环境...
 if not exist "venv" (
     python -m venv venv
     echo       虚拟环境创建完成
@@ -60,7 +60,7 @@ if not exist "venv" (
 :: ============================================================
 :: 4. 安装依赖
 :: ============================================================
-echo [4/6] 安装依赖...
+echo [4/8] 安装依赖...
 echo       升级 pip...
 venv\Scripts\python.exe -m pip install --upgrade pip -q
 echo       安装 PyTorch (CUDA 12.1)...
@@ -80,7 +80,7 @@ echo       依赖安装完成
 :: ============================================================
 :: 5. 初始化配置文件
 :: ============================================================
-echo [5/6] 初始化配置文件...
+echo [5/8] 初始化配置文件...
 if not exist ".env" (
     copy .env.example .env >nul
     echo       已创建 .env，请填入你的 API Key
@@ -97,13 +97,13 @@ if not exist "ai_agent_config.json" (
 :: ============================================================
 :: 6. 下载模型
 :: ============================================================
-echo [6/7] 下载模型文件...
+echo [6/8] 下载模型文件...
 venv\Scripts\python.exe scripts\download_models.py
 
 :: ============================================================
 :: 7. 下载 Godot 可执行文件
 :: ============================================================
-echo [7/7] 下载 Godot 4.6.2...
+echo [7/8] 下载 Godot 4.6.2...
 set "GODOT_DIR=plugins\godot\Godot_v4.6.2-stable_win64.exe"
 set "GODOT_EXE=%GODOT_DIR%\Godot_v4.6.2-stable_win64.exe"
 if exist "%GODOT_EXE%" (
@@ -111,6 +111,19 @@ if exist "%GODOT_EXE%" (
 ) else (
     echo       正在下载 Godot_v4.6.2-stable_win64.exe.zip...
     venv\Scripts\python.exe scripts\download_godot.py
+)
+
+:: ============================================================
+:: 8. 导入 Godot 资产
+:: ============================================================
+echo [8/8] 导入 Godot 资产（首次运行需要，约需数秒）...
+set "GODOT_PROJECT=plugins\godot\tokai-teio"
+if exist "%GODOT_EXE%" (
+    "%GODOT_EXE%" --headless --path "%GODOT_PROJECT%" --import >nul 2>&1
+    echo       Godot 资产导入完成
+) else (
+    echo [警告] 未找到 Godot 可执行文件，跳过资产导入
+    echo        请手动用 Godot 编辑器打开 %GODOT_PROJECT% 完成导入
 )
 
 echo.

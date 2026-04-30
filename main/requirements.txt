@@ -6,6 +6,7 @@
 # 通用
 numpy>=1.21.0,<2.0
 scipy
+matplotlib
 psutil>=5.9.0
 PyYAML
 chardet
@@ -50,7 +51,6 @@ ffmpeg-python
 onnxruntime-gpu; platform_machine == "x86_64" or platform_machine == "AMD64"
 onnxruntime; platform_machine == "aarch64" or platform_machine == "arm64"
 tensorboard
-gradio==4.44.1
 av>=11
 ctranslate2>=4.0,<5
 faster-whisper>=1.1.0
